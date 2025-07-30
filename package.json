@@ -2,16 +2,19 @@
   "name": "doctrack-prototipo",
   "version": "1.0.0",
   "description": "Prototipo funcional de la app Doctrack (escritorio)",
+  "author": "Arturo Rosales V <rosalesvelazquezarturo@email.com>",
   "main": "main.js",
+  "homepage": "./",
   "scripts": {
     "dev": "concurrently \"npm run dev --prefix client\" \"npm start --prefix server\"",
     "desktop": "electron .",
     "build-client": "npm run build --prefix client",
-    "build": "npm run build-client && electron-builder"
+    "build": "npm run build-client && electron-builder",
+    "dist": "electron-builder --publish=never"
   },
   "devDependencies": {
     "concurrently": "^8.2.0",
-    "electron": "^29.0.0",
+    "electron": "^29.0.0", 
     "electron-builder": "^24.12.0"
   },
   "dependencies": {},
@@ -19,23 +22,53 @@
     "appId": "com.doctrack.app",
     "productName": "Doctrack",
     "directories": {
-      "buildResources": "assets"
+      "buildResources": "assets",
+      "output": "dist"
     },
     "files": [
       "client/dist/**/*",
-      "main.js"
+      "main.js",
+      "package.json"
     ],
     "extraMetadata": {
       "main": "main.js"
     },
+    "publish": {
+      "provider": "github",
+      "releaseType": "draft"
+    },
     "win": {
-      "target": "nsis"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico"
     },
     "linux": {
-      "target": "AppImage"
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.png",
+      "category": "Office"
     },
     "mac": {
-      "target": "dmg"
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["arm64", "x64"]
+        }
+      ],
+      "icon": "assets/icon.icns",
+      "category": "public.app-category.productivity"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
     }
   }
 }

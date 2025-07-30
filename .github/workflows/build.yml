@@ -22,17 +22,36 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      # Instalar dependencias de la raíz primero
+      # Configuración especial para Windows
+      - name: Configure Git for Windows
+        if: runner.os == 'Windows'
+        run: git config --global core.longpaths true
+
+      # Instalar dependencias con configuraciones especiales
       - name: Install root dependencies
-        run: npm install
+        run: |
+          npm config set fund false
+          npm config set audit false
+          npm install --no-optional
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
 
       # Instalar y construir el frontend
       - name: Install frontend dependencies & build
         run: |
           cd client
-          npm install --no-audit --no-fund
+          npm config set fund false
+          npm config set audit false
+          npm install --no-optional --legacy-peer-deps
           npm run build
           cd ..
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+
+      # Limpiar caché de npm en Windows
+      - name: Clean npm cache on Windows
+        if: runner.os == 'Windows'
+        run: npm cache clean --force
 
       # Verificar que el frontend está listo
       - name: Confirm dist folder exists
@@ -47,15 +66,22 @@ jobs:
       # Build específico por OS
       - name: Build for Linux
         if: runner.os == 'Linux'
-        run: npx electron-builder --linux
+        run: npx electron-builder --linux --publish=never
+        env:
+          NODE_ENV: production
         
       - name: Build for Windows
         if: runner.os == 'Windows'
-        run: npx electron-builder --win
+        run: npx electron-builder --win --publish=never
+        env:
+          NODE_ENV: production
         
       - name: Build for macOS
         if: runner.os == 'macOS'
-        run: npx electron-builder --mac
+        run: npx electron-builder --mac --publish=never
+        env:
+          NODE_ENV: production
+          CSC_IDENTITY_AUTO_DISCOVERY: false
 
       # Subir artefactos
       - name: Upload Linux artifacts
