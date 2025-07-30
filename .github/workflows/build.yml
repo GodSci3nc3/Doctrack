@@ -11,47 +11,70 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-
+    
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 20.19.0
+          node-version: '20'
           cache: 'npm'
 
-      # 🔧 Solo en Windows: evitar errores de permisos
-      - name: Disable npm cleanup on Windows
-        if: runner.os == 'Windows'
-        run: |
-          npm config set scripts-preinstall ""
-          npm config set scripts-postinstall ""
+      # Instalar dependencias de la raíz primero
+      - name: Install root dependencies
+        run: npm install
 
-      # 🚀 Instalar y construir el frontend
+      # Instalar y construir el frontend
       - name: Install frontend dependencies & build
         run: |
           cd client
-          npm install --no-audit --no-fund --loglevel=error
+          npm install --no-audit --no-fund
           npm run build
           cd ..
 
-      # 📦 Instalar Electron y electron-builder en raíz
-      - name: Install Electron builder
-        run: npm install --save-dev electron electron-builder
-
-      # 🧪 Verifica que el frontend está listo
+      # Verificar que el frontend está listo
       - name: Confirm dist folder exists
-        run: ls -l client/dist
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            dir client\dist
+          else
+            ls -la client/dist
+          fi
+        shell: bash
 
-      # 🏗️ Build de escritorio para cada sistema
-      - name: Build Electron app
-        run: npx electron-builder --${{ runner.os }}
+      # Build específico por OS
+      - name: Build for Linux
+        if: runner.os == 'Linux'
+        run: npx electron-builder --linux
+        
+      - name: Build for Windows
+        if: runner.os == 'Windows'
+        run: npx electron-builder --win
+        
+      - name: Build for macOS
+        if: runner.os == 'macOS'
+        run: npx electron-builder --mac
 
-      # 💾 Subir el instalador como artefacto
-      - name: Upload build artifact
+      # Subir artefactos
+      - name: Upload Linux artifacts
+        if: runner.os == 'Linux'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ runner.os }}-build
-          path: dist/
+          name: linux-build
+          path: dist/*.{AppImage,deb,rpm,tar.gz}
+          
+      - name: Upload Windows artifacts
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: dist/*.{exe,msi}
+          
+      - name: Upload macOS artifacts
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build
+          path: dist/*.{dmg,zip}
