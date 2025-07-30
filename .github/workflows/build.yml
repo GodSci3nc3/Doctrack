@@ -22,23 +22,35 @@ jobs:
           node-version: 20.19.0
           cache: 'npm'
 
+      # 🔧 Solo en Windows: evitar errores de permisos
+      - name: Disable npm cleanup on Windows
+        if: runner.os == 'Windows'
+        run: |
+          npm config set scripts-preinstall ""
+          npm config set scripts-postinstall ""
+
+      # 🚀 Instalar y construir el frontend
       - name: Install frontend dependencies & build
         run: |
           cd client
-          npm install
+          npm install --no-audit --no-fund --loglevel=error
           npm run build
           cd ..
 
-      - name: Install backend build tools (Electron)
+      # 📦 Instalar Electron y electron-builder en raíz
+      - name: Install Electron builder
         run: npm install --save-dev electron electron-builder
 
+      # 🧪 Verifica que el frontend está listo
       - name: Confirm dist folder exists
         run: ls -l client/dist
 
+      # 🏗️ Build de escritorio para cada sistema
       - name: Build Electron app
         run: npx electron-builder --${{ runner.os }}
 
-      - name: Upload artifact
+      # 💾 Subir el instalador como artefacto
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ runner.os }}-build
