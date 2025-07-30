@@ -1,4 +1,4 @@
-name: Build Electron App
+name: Build Doctrack App
 
 on:
   push:
@@ -20,22 +20,26 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 18
+          cache: 'npm'
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build frontend
+      - name: Install frontend dependencies & build
         run: |
           cd client
           npm install
           npm run build
           cd ..
 
-      - name: Build Electron app
-        run: npx electron-builder --$RUNNER_OS
+      - name: Install backend build tools (Electron)
+        run: npm install --save-dev electron electron-builder
 
-      - name: Upload artifacts
+      - name: Confirm dist folder exists
+        run: ls -l client/dist
+
+      - name: Build Electron app
+        run: npx electron-builder --${{ runner.os }}
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.os }}-build
+          name: ${{ runner.os }}-build
           path: dist/
