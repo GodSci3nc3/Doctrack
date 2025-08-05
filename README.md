@@ -1,8 +1,8 @@
-Doctrack - Migratory Case Management Platform
+# Doctrack - Migratory Case Management Platform
 
 <img src = "https://github.com/user-attachments/assets/40c08f1c-bd5b-44bf-a787-63eaa06a4982" style = "height: 600px;">
 
-Doctrack es una plataforma todo-en-uno diseñada para optimizar y profesionalizar el trabajo de los preparadores documentales migratorios. Este proyecto es el MVP de una solución integral que permite gestionar, automatizar y realizar un seguimiento eficiente de los casos migratorios y la documentación de los clientes.
+**Doctrack** es una plataforma todo-en-uno diseñada para optimizar y profesionalizar el trabajo de los preparadores documentales migratorios. Este proyecto es el MVP de una solución integral que permite gestionar, automatizar y realizar un seguimiento eficiente de los casos migratorios y la documentación de los clientes.
 Tecnologías Utilizadas
 
     Frontend: React, TailwindCSS, Vite
@@ -15,7 +15,7 @@ Tecnologías Utilizadas
 
     Estilo Visual: Blanco, gris claro, azul oscuro y verde jade
 
-Estructura del MVP
+## Estructura del MVP
 
 El MVP de Doctrack incluye las siguientes funcionalidades clave:
 1. Gestión de Casos Migratorios
@@ -42,7 +42,7 @@ El MVP de Doctrack incluye las siguientes funcionalidades clave:
 
     Pagos & Reportes: Resumen de pagos y generación de reportes de transacciones y casos.
 
-Características del MVP
+## Características del MVP
 
 El MVP está enfocado en tres áreas clave del flujo de trabajo migratorio:
 
@@ -52,7 +52,7 @@ El MVP está enfocado en tres áreas clave del flujo de trabajo migratorio:
 
     Documentos y Pagos: La plataforma permite subir documentos y gestionarlos de manera segura. Además, los preparadores pueden hacer un seguimiento de los pagos realizados y generar reportes de los mismos.
 
-Flujo de Trabajo del MVP
+## Flujo de Trabajo del MVP
 
     Recepción del Cliente: El proceso comienza con la recepción del cliente y la creación del perfil con toda su documentación.
 
