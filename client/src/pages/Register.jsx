@@ -19,15 +19,15 @@ const Register = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [registerError, setRegisterError] = useState('');
 
+  // URL del API corregida
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://doctrack-0jp0.onrender.com';
+
   // Debug: verificar variables de entorno
   useEffect(() => {
     console.log('🔧 DEBUGGING INFO:');
     console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
-    console.log('VITE_MODE:', import.meta.env.MODE);
-    console.log('VITE_DEV:', import.meta.env.DEV);
-    console.log('VITE_PROD:', import.meta.env.PROD);
-    console.log('API URL completa sería:', `${import.meta.env.VITE_API_URL}/api/auth/register`);
-    console.log('All env vars:', import.meta.env);
+    console.log('API_BASE_URL:', API_BASE_URL);
+    console.log('Register URL sería:', `${API_BASE_URL}/auth/register`);
   }, []);
 
   // Limpiar errores cuando el usuario empiece a escribir
@@ -104,9 +104,9 @@ const Register = () => {
     setIsLoading(true);
     setRegisterError('');
 
-    // Debug logs
-    const apiUrl = import.meta.env.VITE_API_URL || 'https://doctrack-0jp0.onrender.com';
-    const fullUrl = `${import.meta.env.VITE_API_URL}/auth/register`;
+    // URL CORREGIDA - sin /api
+    const fullUrl = `${API_BASE_URL}/auth/register`;
+    
     console.log('🚀 Intentando registro...');
     console.log('📍 URL:', fullUrl);
     console.log('📦 Datos a enviar:', {
@@ -118,12 +118,14 @@ const Register = () => {
     });
 
     try {
-      const response = await fetch(fullUrl, {
+      // Headers mejorados para CORS
+      const requestOptions = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
-        credentials: 'include',
+        credentials: 'include', // Importante para cookies
         body: JSON.stringify({
           nombre: formData.nombre,
           apellido: formData.apellido,
@@ -131,10 +133,15 @@ const Register = () => {
           password: formData.password,
           rol: formData.rol
         }),
-      });
+      };
+
+      console.log('📤 Request options:', requestOptions);
+
+      const response = await fetch(fullUrl, requestOptions);
 
       console.log('📨 Response status:', response.status);
       console.log('📨 Response ok:', response.ok);
+      console.log('📨 Response headers:', Object.fromEntries(response.headers.entries()));
 
       if (response.ok) {
         const data = await response.json();
@@ -144,15 +151,23 @@ const Register = () => {
         window.dispatchEvent(new Event('authChange'));
         
         // Mostrar mensaje de éxito
-        alert('Registro exitoso! Bienvenido al sistema.');
+        alert('¡Registro exitoso! Bienvenido al sistema.');
         
-        // El usuario ya está autenticado automáticamente, redirigir al dashboard
-        // navigate('/dashboard');
+        // Redirigir al dashboard
+        navigate('/dashboard');
         
       } else {
-        const errorData = await response.json();
-        console.error('❌ Error del servidor:', errorData);
-        setRegisterError(errorData.message || 'Error al crear la cuenta');
+        // Intentar leer el error del servidor
+        let errorMessage = 'Error al crear la cuenta';
+        try {
+          const errorData = await response.json();
+          console.error('❌ Error del servidor:', errorData);
+          errorMessage = errorData.message || errorMessage;
+        } catch (parseError) {
+          console.error('❌ No se pudo parsear el error:', parseError);
+          errorMessage = `Error del servidor (${response.status})`;
+        }
+        setRegisterError(errorMessage);
       }
     } catch (error) {
       console.error('💥 Error de conexión:', error);
@@ -161,9 +176,13 @@ const Register = () => {
       
       // Error más específico para debugging
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        setRegisterError(`Error de conexión. ¿Está el servidor corriendo en ${apiUrl}?`);
+        setRegisterError(`Error de conexión. Verifica que el servidor esté corriendo en ${API_BASE_URL}`);
+      } else if (error.name === 'TypeError' && error.message.includes('NetworkError')) {
+        setRegisterError('Error de red. Verifica tu conexión a internet.');
+      } else if (error.message.includes('CORS')) {
+        setRegisterError('Error de CORS. El servidor no permite conexiones desde este dominio.');
       } else {
-        setRegisterError('Error de conexión. Por favor, intenta de nuevo.');
+        setRegisterError(`Error de conexión: ${error.message}`);
       }
     } finally {
       setIsLoading(false);
@@ -193,11 +212,16 @@ const Register = () => {
             </div>
             <p className="text-gray-500 text-lg font-light">Crear cuenta</p>
             
-            
+            {/* Mostrar información de debugging en desarrollo */}
+            {import.meta.env.DEV && (
+              <div className="mt-4 text-xs text-gray-400">
+                API: {API_BASE_URL}
+              </div>
+            )}
           </div>
 
           {/* Formulario */}
-          <div className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             
             {/* Campo Nombre */}
             <div>
@@ -371,7 +395,7 @@ const Register = () => {
 
             {/* Botón de crear cuenta */}
             <button
-              onClick={handleSubmit}
+              type="submit"
               disabled={isLoading}
               className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white font-medium py-4 px-6 rounded-md transition-all duration-200 text-lg disabled:cursor-not-allowed"
             >
@@ -385,7 +409,7 @@ const Register = () => {
               )}
             </button>
 
-          </div>
+          </form>
 
           {/* Enlace para iniciar sesión */}
           <div className="mt-8 text-center">

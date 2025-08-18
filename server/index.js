@@ -13,11 +13,11 @@ const prisma = new PrismaClient();
 app.use(express.json());
 app.use(cookieParser());
 
-// CORS configuration - more permissive for proper preflight handling
+// CORS configuration - CORREGIDO
 app.use(cors({
   origin: [
     'https://doctrack-phnt.vercel.app',
-    'http://localhost:5173' // Para desarrollo local
+    'http://localhost:5173'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -26,11 +26,28 @@ app.use(cors({
     'Authorization', 
     'Cookie', 
     'Set-Cookie',
-    'Access-Control-Allow-Credentials'
+    'Access-Control-Allow-Credentials',
+    'Access-Control-Allow-Origin'
   ],
   exposedHeaders: ['Set-Cookie'],
-  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
+  optionsSuccessStatus: 200
 }));
+
+// MIDDLEWARE ADICIONAL PARA CORS
+app.use(function(req, res, next) {
+  const origin = req.headers.origin;
+  if (origin === 'https://doctrack-phnt.vercel.app' || origin === 'http://localhost:5173') {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cookie,Set-Cookie');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
+});
 
 // Helpers para JWT y cookies
 const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
@@ -71,27 +88,21 @@ function authRequired(req, res, next) {
   }
 }
 
-// Debug middleware to log all requests
+// Debug middleware
 app.use(function(req, res, next) {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url} - Origin: ${req.headers.origin}`);
   next();
 });
 
-// Global OPTIONS handler for all routes
-app.options('*', function(req, res) {
-  console.log('OPTIONS request received for:', req.url);
-  res.status(200).end();
-});
-
 // === ENDPOINTS ===
 
-// Health
-app.get('/api/health', function(_req, res) {
+// Health - CAMBIADO: sin /api
+app.get('/health', function(_req, res) {
   res.json({ ok: true, service: 'Doctrack API', env: process.env.NODE_ENV || 'development' });
 });
 
-// LOGIN
-app.post('/api/auth/login', async function(req, res) {
+// LOGIN - CAMBIADO: sin /api
+app.post('/auth/login', async function(req, res) {
   console.log('--- LOGIN REQUEST START ---');
   try {
     console.log('Step 1: Parsing request body');
@@ -148,33 +159,46 @@ app.post('/api/auth/login', async function(req, res) {
   console.log('--- LOGIN REQUEST END ---');
 });
 
-// REGISTRO
-app.post('/api/auth/register', async function(req, res) {
+// REGISTRO - CAMBIADO: sin /api
+app.post('/auth/register', async function(req, res) {
+  console.log('--- REGISTER REQUEST START ---');
+  console.log('Request body:', req.body);
+  console.log('Request headers:', req.headers);
+  
   try {
     const { nombre, apellido, email, password, rol } = req.body || {};
     
+    console.log('Received data:', { nombre, apellido, email, rol, passwordLength: password?.length });
+    
     // Validaciones básicas
     if (!nombre || !apellido || !email || !password || !rol) {
+      console.log('Validation failed: missing fields');
       return res.status(400).json({ message: 'Todos los campos son requeridos' });
     }
 
     if (password.length < 6) {
+      console.log('Validation failed: password too short');
       return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres' });
     }
 
     if (!['preparador', 'soporte'].includes(rol)) {
+      console.log('Validation failed: invalid role');
       return res.status(400).json({ message: 'Rol inválido' });
     }
 
+    console.log('Checking if user exists...');
     // Verificar si el email ya existe
     const existingUser = await prisma.usuariointerno.findUnique({ where: { email } });
     if (existingUser) {
+      console.log('User already exists');
       return res.status(400).json({ message: 'El email ya está registrado' });
     }
 
+    console.log('Hashing password...');
     // Hashear la contraseña
     const hashedPassword = await bcrypt.hash(password, 12);
 
+    console.log('Creating user...');
     // Crear usuario
     const newUser = await prisma.usuariointerno.create({
       data: {
@@ -186,13 +210,19 @@ app.post('/api/auth/register', async function(req, res) {
       }
     });
 
-    // Crear sesión automáticamente para cualquier usuario registrado
+    console.log('User created successfully:', newUser.usuario_id);
+
+    console.log('Generating tokens...');
+    // Crear sesión automáticamente
     const accessToken = signAccessToken({ sub: newUser.usuario_id, email: newUser.email, role: newUser.rol });
     const refreshToken = signRefreshToken({ sub: newUser.usuario_id });
 
+    console.log('Setting cookies...');
     setAuthCookies(res, { accessToken, refreshToken });
 
     const { contrase_a: _omit, ...safeUser } = newUser;
+    
+    console.log('Sending response...');
     return res.json({ 
       user: safeUser, 
       message: 'Registro exitoso. Bienvenido al sistema.' 
@@ -200,12 +230,13 @@ app.post('/api/auth/register', async function(req, res) {
 
   } catch (err) {
     console.error('REGISTER error:', err);
-    return res.status(500).json({ message: 'Error en el registro' });
+    console.error('Error stack:', err.stack);
+    return res.status(500).json({ message: 'Error en el registro', error: err.message });
   }
 });
 
-// LOGOUT
-app.post('/api/auth/logout', function(req, res) {
+// LOGOUT - CAMBIADO: sin /api
+app.post('/auth/logout', function(req, res) {
   clearAuthCookies(res);
   return res.json({ ok: true });
 });
@@ -217,6 +248,7 @@ app.all('*', function(req, res) {
     message: 'Route not found',
     method: req.method,
     url: req.url,
+    available_routes: ['/health', '/auth/login', '/auth/register', '/auth/logout'],
     timestamp: new Date().toISOString()
   });
 });
@@ -244,28 +276,13 @@ console.log('================================');
 async function testDatabaseConnection() {
   try {
     console.log('Testing database connection...');
-    console.log('Prisma client version:', prisma._clientVersion || 'Unknown');
-    console.log('Attempting to connect to database...');
-    
     await prisma.$connect();
     console.log('✅ Database connection successful');
     
-    // Test if we can query the usuariointerno table
-    console.log('Testing table access...');
     const userCount = await prisma.usuariointerno.count();
     console.log(`✅ Found ${userCount} users in usuariointerno table`);
   } catch (error) {
     console.error('❌ Database connection failed:', error.message);
-    console.error('Error code:', error.code);
-    console.error('Error name:', error.name);
-    console.error('Full database error:', error);
-    
-    // Additional debugging for Prisma client errors
-    if (error.name === 'PrismaClientInitializationError') {
-      console.error('This appears to be a Prisma client initialization error.');
-      console.error('The Prisma client may have been generated with a different schema.');
-      console.error('Try regenerating the client with: npx prisma generate');
-    }
   }
 }
 
@@ -274,5 +291,6 @@ testDatabaseConnection();
 // === START ===
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, function() {
-  console.log(`Doctrack API escuchando en puerto ${PORT}`);
+  console.log(`🚀 Doctrack API escuchando en puerto ${PORT}`);
+  console.log(`🌐 Server available at: https://doctrack-0jp0.onrender.com`);
 });
