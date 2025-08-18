@@ -7,132 +7,285 @@ import {
   XMarkIcon,
   HomeIcon,
   BellIcon,
-  Cog6ToothIcon
+  Cog6ToothIcon,
+  DocumentIcon,
+  BriefcaseIcon,
+  PlusIcon,
+  CalendarIcon,
+  ChartBarIcon,
+  UsersIcon,
+  GlobeAltIcon,
+  AcademicCapIcon,
+  ChatBubbleLeftRightIcon,
+  ShoppingBagIcon,
+  QuestionMarkCircleIcon,
+  CurrencyDollarIcon,
+  BuildingOfficeIcon,
+  EyeIcon,
+  DocumentDuplicateIcon,
+  RobotIcon,
+  ClipboardDocumentListIcon,
+  EnvelopeIcon,
+  LockClosedIcon,
+  UserIcon,
+  CreditCardIcon,
+  StarIcon
 } from '@heroicons/react/24/outline';
 
 import { useLocation, useNavigate } from 'react-router-dom';
 
-// Componente de contenido para Clientes
-const ClientesContent = () => (
+// Componente de contenido principal del Dashboard
+const MainDashboardContent = ({ dashboardData }) => (
   <div className="space-y-6">
-    <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
-      <h2 className="text-xl font-semibold text-slate-900 mb-4">Gestión de Clientes</h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-center">
-            <UserGroupIcon className="h-8 w-8 text-blue-600" />
-            <div className="ml-4">
-              <p className="text-sm font-medium text-blue-900">Total Clientes</p>
-              <p className="text-2xl font-bold text-blue-600">247</p>
-            </div>
-          </div>
+    {/* Header con botones */}
+    <div className="flex items-center justify-between">
+      <div className="flex items-center space-x-4">
+        <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 flex items-center space-x-2">
+          <input
+            type="text"
+            placeholder="Buscar..."
+            className="border-0 focus:ring-0 focus:outline-none text-sm bg-transparent"
+          />
         </div>
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="flex items-center">
-            <DocumentTextIcon className="h-8 w-8 text-green-600" />
-            <div className="ml-4">
-              <p className="text-sm font-medium text-green-900">Activos</p>
-              <p className="text-2xl font-bold text-green-600">189</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <div className="flex items-center">
-            <BellIcon className="h-8 w-8 text-amber-600" />
-            <div className="ml-4">
-              <p className="text-sm font-medium text-amber-900">Pendientes</p>
-              <p className="text-2xl font-bold text-amber-600">58</p>
-            </div>
-          </div>
-        </div>
+        <button className="w-10 h-10 bg-white rounded-lg border border-gray-200 flex items-center justify-center shadow-sm">
+          <div className="w-6 h-6 bg-gray-300 rounded-full"></div>
+        </button>
       </div>
       
-      <div className="bg-slate-50 rounded-lg p-4">
-        <h3 className="font-medium text-slate-900 mb-3">Clientes Recientes</h3>
-        <div className="space-y-2">
-          {['María González', 'Carlos Rivera', 'Ana Martínez', 'José López'].map((name, idx) => (
-            <div key={idx} className="flex items-center justify-between py-2 px-3 bg-white rounded border">
-              <span className="text-sm text-slate-700">{name}</span>
-              <span className="text-xs text-slate-500">Hace {idx + 1} día{idx !== 0 ? 's' : ''}</span>
+      <div className="flex items-center space-x-3">
+        <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 text-sm font-medium">
+          <PlusIcon className="w-4 h-4" />
+          <span>New Client</span>
+        </button>
+        <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 text-sm font-medium">
+          <PlusIcon className="w-4 h-4" />
+          <span>New Case</span>
+        </button>
+      </div>
+    </div>
+
+    {/* Cards principales */}
+    <div className="grid grid-cols-4 gap-6">
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between mb-4">
+          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+            <UserGroupIcon className="w-6 h-6 text-blue-600" />
+          </div>
+        </div>
+        <div className="text-2xl font-bold text-gray-900 mb-1">
+          {dashboardData?.clientes || '120'}
+        </div>
+        <div className="text-sm text-gray-500">Clientes</div>
+      </div>
+
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between mb-4">
+          <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+            <BriefcaseIcon className="w-6 h-6 text-orange-600" />
+          </div>
+        </div>
+        <div className="text-2xl font-bold text-gray-900 mb-1">
+          {dashboardData?.casosActivos || '45'}
+        </div>
+        <div className="text-sm text-gray-500">Casos Activos</div>
+      </div>
+
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between mb-4">
+          <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+            <div className="w-6 h-6 bg-green-600 rounded-full flex items-center justify-center">
+              <span className="text-white text-xs font-bold">✓</span>
             </div>
-          ))}
+          </div>
+        </div>
+        <div className="text-2xl font-bold text-gray-900 mb-1">
+          {dashboardData?.casosCompletados || '75'}
+        </div>
+        <div className="text-sm text-gray-500">Casos Completados</div>
+      </div>
+
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between mb-4">
+          <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+            <DocumentIcon className="w-6 h-6 text-red-600" />
+          </div>
+        </div>
+        <div className="text-2xl font-bold text-gray-900 mb-1">
+          {dashboardData?.documentosPendientes || '15'}
+        </div>
+        <div className="text-sm text-gray-500">Documentos Pendientes</div>
+      </div>
+    </div>
+
+    {/* Secciones inferiores */}
+    <div className="grid grid-cols-2 gap-6">
+      {/* Resumen de Clientes */}
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-gray-900">Resumen de Clientes</h3>
+          <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+            Ver todos los clientes
+          </button>
+        </div>
+        <p className="text-gray-500 text-sm mb-6">
+          Vista general de la base de clientes, incluyendo nuevos registros y actividad reciente.
+        </p>
+        <div className="space-y-4">
+          {dashboardData?.clientesRecientes?.slice(0, 4).map((cliente, idx) => (
+            <div key={idx} className="flex items-center justify-between py-2">
+              <span className="text-sm text-gray-700 font-medium">{cliente.nombre_completo}</span>
+              <span className="text-xs text-gray-500">
+                Hace {cliente.dias_registro} día{cliente.dias_registro !== 1 ? 's' : ''}
+              </span>
+            </div>
+          )) || (
+            <>
+              <div className="flex items-center justify-between py-2">
+                <span className="text-sm text-gray-700 font-medium">María González</span>
+                <span className="text-xs text-gray-500">Hace 1 día</span>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <span className="text-sm text-gray-700 font-medium">Carlos Rivera</span>
+                <span className="text-xs text-gray-500">Hace 2 días</span>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <span className="text-sm text-gray-700 font-medium">Ana Martínez</span>
+                <span className="text-xs text-gray-500">Hace 3 días</span>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <span className="text-sm text-gray-700 font-medium">José López</span>
+                <span className="text-xs text-gray-500">Hace 4 días</span>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Resumen de Casos */}
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-gray-900">Resumen de Casos</h3>
+          <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+            Ver todos los casos
+          </button>
+        </div>
+        <p className="text-gray-500 text-sm mb-6">
+          Estado actual de los casos migratorios, próximos plazos y casos recientes.
+        </p>
+        <div className="space-y-4">
+          {dashboardData?.casosRecientes?.map((caso, idx) => (
+            <div key={idx} className="flex items-center justify-between py-2">
+              <div className="flex items-center space-x-3">
+                <span className="text-sm text-gray-700 font-medium">{caso.cliente}</span>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  caso.estado === 'Aprobado' ? 'bg-green-100 text-green-800' :
+                  caso.estado === 'En proceso' ? 'bg-blue-100 text-blue-800' :
+                  'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {caso.estado}
+                </span>
+              </div>
+              <span className="text-xs text-gray-500">{caso.fecha}</span>
+            </div>
+          )) || (
+            <>
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center space-x-3">
+                  <span className="text-sm text-gray-700 font-medium">María González</span>
+                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">En proceso</span>
+                </div>
+                <span className="text-xs text-gray-500">15/01/2025</span>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center space-x-3">
+                  <span className="text-sm text-gray-700 font-medium">Carlos Rivera</span>
+                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Documentos</span>
+                </div>
+                <span className="text-xs text-gray-500">14/01/2025</span>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center space-x-3">
+                  <span className="text-sm text-gray-700 font-medium">Ana Martínez</span>
+                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Revisión</span>
+                </div>
+                <span className="text-xs text-gray-500">13/01/2025</span>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center space-x-3">
+                  <span className="text-sm text-gray-700 font-medium">José López</span>
+                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Aprobado</span>
+                </div>
+                <span className="text-xs text-gray-500">12/01/2025</span>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
-  </div>
-);
 
-// Componente de contenido para Casos
-const CasosContent = () => (
-  <div className="space-y-6">
-    <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
-      <h2 className="text-xl font-semibold text-slate-900 mb-4">Casos Migratorios</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
-          <DocumentTextIcon className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-          <p className="text-sm font-medium text-blue-900">Total Casos</p>
-          <p className="text-2xl font-bold text-blue-600">156</p>
-        </div>
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
-          <div className="h-8 w-8 bg-yellow-500 rounded-full mx-auto mb-2 flex items-center justify-center">
-            <span className="text-white text-xs font-bold">P</span>
-          </div>
-          <p className="text-sm font-medium text-yellow-900">En Proceso</p>
-          <p className="text-2xl font-bold text-yellow-600">89</p>
-        </div>
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-          <div className="h-8 w-8 bg-green-500 rounded-full mx-auto mb-2 flex items-center justify-center">
-            <span className="text-white text-xs font-bold">✓</span>
-          </div>
-          <p className="text-sm font-medium text-green-900">Aprobados</p>
-          <p className="text-2xl font-bold text-green-600">52</p>
-        </div>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-          <div className="h-8 w-8 bg-red-500 rounded-full mx-auto mb-2 flex items-center justify-center">
-            <span className="text-white text-xs font-bold">!</span>
-          </div>
-          <p className="text-sm font-medium text-red-900">Urgentes</p>
-          <p className="text-2xl font-bold text-red-600">15</p>
-        </div>
+    {/* Checklist Pendientes */}
+    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-lg font-semibold text-gray-900">Checklist Pendientes</h3>
+        <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+          Gestionar checklists
+        </button>
       </div>
-      
-      <div className="bg-slate-50 rounded-lg p-4">
-        <h3 className="font-medium text-slate-900 mb-3">Casos Recientes</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200">
-                <th className="text-left py-2 text-slate-700">Cliente</th>
-                <th className="text-left py-2 text-slate-700">Tipo</th>
-                <th className="text-left py-2 text-slate-700">Estado</th>
-                <th className="text-left py-2 text-slate-700">Fecha</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                { cliente: 'María González', tipo: 'Residencia', estado: 'En proceso', fecha: '15/01/2025' },
-                { cliente: 'Carlos Rivera', tipo: 'Ciudadanía', estado: 'Documentos', fecha: '14/01/2025' },
-                { cliente: 'Ana Martínez', tipo: 'Visa trabajo', estado: 'Revisión', fecha: '13/01/2025' },
-                { cliente: 'José López', tipo: 'Reunificación', estado: 'Aprobado', fecha: '12/01/2025' }
-              ].map((caso, idx) => (
-                <tr key={idx} className="border-b border-slate-100">
-                  <td className="py-2 text-slate-700">{caso.cliente}</td>
-                  <td className="py-2 text-slate-600">{caso.tipo}</td>
-                  <td className="py-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      caso.estado === 'Aprobado' ? 'bg-green-100 text-green-800' :
-                      caso.estado === 'En proceso' ? 'bg-blue-100 text-blue-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {caso.estado}
-                    </span>
-                  </td>
-                  <td className="py-2 text-slate-500">{caso.fecha}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <p className="text-gray-500 text-sm mb-6">
+        Tareas y documentos pendientes para completar casos.
+      </p>
+      <div className="space-y-3">
+        {dashboardData?.checklistPendientes?.map((item, idx) => (
+          <div key={idx} className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <div className="w-4 h-4 border-2 border-gray-300 rounded"></div>
+              <div>
+                <span className="text-sm font-medium text-gray-900">{item.tarea}</span>
+                <div className="text-xs text-gray-500">{item.cliente}</div>
+              </div>
+            </div>
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+              item.prioridad === 'alta' ? 'bg-red-100 text-red-800' :
+              item.prioridad === 'media' ? 'bg-yellow-100 text-yellow-800' :
+              'bg-gray-100 text-gray-800'
+            }`}>
+              {item.fecha_limite}
+            </span>
+          </div>
+        )) || (
+          <>
+            <div className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center space-x-3">
+                <div className="w-4 h-4 border-2 border-gray-300 rounded"></div>
+                <div>
+                  <span className="text-sm font-medium text-gray-900">Revisar documentos de identidad</span>
+                  <div className="text-xs text-gray-500">María González</div>
+                </div>
+              </div>
+              <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">20/01/2025</span>
+            </div>
+            <div className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center space-x-3">
+                <div className="w-4 h-4 border-2 border-gray-300 rounded"></div>
+                <div>
+                  <span className="text-sm font-medium text-gray-900">Completar formulario I-485</span>
+                  <div className="text-xs text-gray-500">Carlos Rivera</div>
+                </div>
+              </div>
+              <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">18/01/2025</span>
+            </div>
+            <div className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center space-x-3">
+                <div className="w-4 h-4 border-2 border-gray-300 rounded"></div>
+                <div>
+                  <span className="text-sm font-medium text-gray-900">Agendar entrevista</span>
+                  <div className="text-xs text-gray-500">Ana Martínez</div>
+                </div>
+              </div>
+              <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">25/01/2025</span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   </div>
@@ -140,13 +293,25 @@ const CasosContent = () => (
 
 const Dashboard = () => {
   const [currentUser, setCurrentUser] = useState(null);
-  const [currentRoute, setCurrentRoute] = useState('/clients');
+  const [currentRoute, setCurrentRoute] = useState('/dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [dashboardData, setDashboardData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Logout function (defined before useEffect)
-  const handleLogout = () => {
+  // Logout function
+  const handleLogout = async () => {
+    try {
+      // Llamar a la API de logout
+      await fetch(`${import.meta.env.VITE_API_URL}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
+    
     // Clear localStorage
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
@@ -156,6 +321,36 @@ const Dashboard = () => {
     
     // Redirect to login
     navigate('/login');
+  };
+
+  // Función para cargar datos del dashboard
+  const loadDashboardData = async () => {
+    try {
+      const [statsRes, clientesRes, casosRes, checklistRes] = await Promise.all([
+        fetch(`${import.meta.env.VITE_API_URL}/api/dashboard/stats`, { credentials: 'include' }),
+        fetch(`${import.meta.env.VITE_API_URL}/api/dashboard/clientes-resumen`, { credentials: 'include' }),
+        fetch(`${import.meta.env.VITE_API_URL}/api/dashboard/casos-resumen`, { credentials: 'include' }),
+        fetch(`${import.meta.env.VITE_API_URL}/api/dashboard/checklist-pendientes`, { credentials: 'include' })
+      ]);
+
+      if (statsRes.ok) {
+        const stats = await statsRes.json();
+        const clientes = clientesRes.ok ? await clientesRes.json() : [];
+        const casos = casosRes.ok ? await casosRes.json() : [];
+        const checklist = checklistRes.ok ? await checklistRes.json() : [];
+
+        setDashboardData({
+          ...stats,
+          clientesRecientes: clientes,
+          casosRecientes: casos,
+          checklistPendientes: checklist
+        });
+      }
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Verificar autenticación al cargar
@@ -172,12 +367,13 @@ const Dashboard = () => {
       try {
         const user = JSON.parse(userData);
         setCurrentUser(user);
+        loadDashboardData();
       } catch (error) {
         console.error('Error parsing user data:', error);
         handleLogout();
       }
     }
-  }, [navigate]);
+  }, []);
 
   // Navegación interna
   const handleNavigation = (route) => {
@@ -191,146 +387,437 @@ const Dashboard = () => {
     setCurrentRoute(location.pathname);
   }, [location.pathname]);
 
-  // Configuración de menú
+  // Configuración completa de menú
   const menuItems = [
+    // INICIO
     {
-      id: 'clients',
-      label: 'Clientes',
-      icon: UserGroupIcon,
-      route: '/clients',
-      active: currentRoute === '/clients'
+      category: '🏠 Inicio',
+      items: [
+        {
+          id: 'dashboard',
+          label: 'Escritorio',
+          icon: HomeIcon,
+          route: '/dashboard',
+          active: currentRoute === '/dashboard'
+        },
+        {
+          id: 'agenda',
+          label: 'Agenda (en desarrollo)',
+          icon: CalendarIcon,
+          route: '/agenda',
+          active: currentRoute === '/agenda'
+        }
+      ]
     },
+    // CASOS MIGRATORIOS
     {
-      id: 'cases',
-      label: 'Casos Migratorios',
-      icon: DocumentTextIcon,
-      route: '/cases',
-      active: currentRoute === '/cases'
+      category: '📁 Casos Migratorios',
+      items: [
+        {
+          id: 'casos-lista',
+          label: 'Lista de casos',
+          icon: BriefcaseIcon,
+          route: '/casos',
+          active: currentRoute === '/casos'
+        },
+        {
+          id: 'casos-nuevo',
+          label: 'Nuevo Caso',
+          icon: PlusIcon,
+          route: '/casos/nuevo',
+          active: currentRoute === '/casos/nuevo'
+        },
+        {
+          id: 'casos-tracking',
+          label: 'Case tracking (en desarrollo)',
+          icon: EyeIcon,
+          route: '/casos/tracking',
+          active: currentRoute === '/casos/tracking'
+        },
+        {
+          id: 'casos-ia',
+          label: 'Revision IA (en desarrollo)',
+          icon: RobotIcon,
+          route: '/casos/ia',
+          active: currentRoute === '/casos/ia'
+        }
+      ]
+    },
+    // CLIENTES
+    {
+      category: '👤 Clientes',
+      items: [
+        {
+          id: 'clientes-lista',
+          label: 'Lista de clientes',
+          icon: UserGroupIcon,
+          route: '/clientes',
+          active: currentRoute === '/clientes'
+        },
+        {
+          id: 'clientes-nuevo',
+          label: 'Nuevo Cliente',
+          icon: PlusIcon,
+          route: '/clientes/nuevo',
+          active: currentRoute === '/clientes/nuevo'
+        },
+        {
+          id: 'contratos',
+          label: 'Contratos (en desarrollo)',
+          icon: DocumentDuplicateIcon,
+          route: '/contratos',
+          active: currentRoute === '/contratos'
+        }
+      ]
+    },
+    // DOCUMENTOS
+    {
+      category: '📄 Documentos',
+      items: [
+        {
+          id: 'documentos-lista',
+          label: 'Listado de documentos',
+          icon: DocumentIcon,
+          route: '/documentos',
+          active: currentRoute === '/documentos'
+        },
+        {
+          id: 'plantillas',
+          label: 'Plantillas y modelos (en desarrollo)',
+          icon: ClipboardDocumentListIcon,
+          route: '/plantillas',
+          active: currentRoute === '/plantillas'
+        }
+      ]
+    },
+    // PAGOS & REPORTES
+    {
+      category: '💰 Pagos & Reportes',
+      items: [
+        {
+          id: 'pagos-resumen',
+          label: 'Resumen de pagos (en desarrollo)',
+          icon: CurrencyDollarIcon,
+          route: '/pagos',
+          active: currentRoute === '/pagos'
+        },
+        {
+          id: 'detalle-caso',
+          label: 'Detalle caso/cliente (en desarrollo)',
+          icon: ChartBarIcon,
+          route: '/detalle',
+          active: currentRoute === '/detalle'
+        },
+        {
+          id: 'reportes',
+          label: 'Generacion de reportes (en desarrollo)',
+          icon: DocumentTextIcon,
+          route: '/reportes',
+          active: currentRoute === '/reportes'
+        },
+        {
+          id: 'negocios',
+          label: 'Negocios realizados (en desarrollo)',
+          icon: BuildingOfficeIcon,
+          route: '/negocios',
+          active: currentRoute === '/negocios'
+        },
+        {
+          id: 'correos',
+          label: 'Correos enviados (en desarrollo)',
+          icon: EnvelopeIcon,
+          route: '/correos',
+          active: currentRoute === '/correos'
+        }
+      ]
+    },
+    // USUARIOS
+    {
+      category: '👥 Usuarios',
+      items: [
+        {
+          id: 'usuarios-lista',
+          label: 'Lista de usuarios (en desarrollo)',
+          icon: UsersIcon,
+          route: '/usuarios',
+          active: currentRoute === '/usuarios'
+        },
+        {
+          id: 'usuarios-agregar',
+          label: 'Agregar usuario (en desarrollo)',
+          icon: PlusIcon,
+          route: '/usuarios/nuevo',
+          active: currentRoute === '/usuarios/nuevo'
+        }
+      ]
+    },
+    // SITIO WEB
+    {
+      category: '🌐 Sitio Web',
+      items: [
+        {
+          id: 'servicios',
+          label: 'Servicios (en desarrollo)',
+          icon: GlobeAltIcon,
+          route: '/servicios',
+          active: currentRoute === '/servicios'
+        },
+        {
+          id: 'contenidos',
+          label: 'Contenidos (en desarrollo)',
+          icon: DocumentTextIcon,
+          route: '/contenidos',
+          active: currentRoute === '/contenidos'
+        },
+        {
+          id: 'empresa',
+          label: 'Nuestra empresa (en desarrollo)',
+          icon: BuildingOfficeIcon,
+          route: '/empresa',
+          active: currentRoute === '/empresa'
+        },
+        {
+          id: 'privacidad',
+          label: 'Politicas de privacidad (en desarrollo)',
+          icon: LockClosedIcon,
+          route: '/privacidad',
+          active: currentRoute === '/privacidad'
+        }
+      ]
+    },
+    // CONFIGURACIÓN
+    {
+      category: '🛠️ Configuración',
+      items: [
+        {
+          id: 'info-empresa',
+          label: 'Informacion empresa (en desarrollo)',
+          icon: BuildingOfficeIcon,
+          route: '/config/empresa',
+          active: currentRoute === '/config/empresa'
+        },
+        {
+          id: 'dominio',
+          label: 'Dominio y pagina web (en desarrollo)',
+          icon: GlobeAltIcon,
+          route: '/config/dominio',
+          active: currentRoute === '/config/dominio'
+        },
+        {
+          id: 'plantillas-web',
+          label: 'Plantillas pagina web (en desarrollo)',
+          icon: DocumentIcon,
+          route: '/config/plantillas-web',
+          active: currentRoute === '/config/plantillas-web'
+        },
+        {
+          id: 'tipos-cliente',
+          label: 'Tipos de cliente (en desarrollo)',
+          icon: UserGroupIcon,
+          route: '/config/tipos-cliente',
+          active: currentRoute === '/config/tipos-cliente'
+        },
+        {
+          id: 'integraciones',
+          label: 'Integraciones (en desarrollo)',
+          icon: Cog6ToothIcon,
+          route: '/config/integraciones',
+          active: currentRoute === '/config/integraciones'
+        },
+        {
+          id: 'ajustes',
+          label: 'Ajustes generales (en desarrollo)',
+          icon: Cog6ToothIcon,
+          route: '/config/ajustes',
+          active: currentRoute === '/config/ajustes'
+        },
+        {
+          id: 'permisos',
+          label: 'Permisos (en desarrollo)',
+          icon: LockClosedIcon,
+          route: '/config/permisos',
+          active: currentRoute === '/config/permisos'
+        },
+        {
+          id: 'notificaciones',
+          label: 'Notificaciones (en desarrollo)',
+          icon: BellIcon,
+          route: '/config/notificaciones',
+          active: currentRoute === '/config/notificaciones'
+        }
+      ]
+    },
+    // MI CUENTA
+    {
+      category: '🧑 Mi cuenta',
+      items: [
+        {
+          id: 'perfil',
+          label: 'Modificar mi perfil (en desarrollo)',
+          icon: UserIcon,
+          route: '/cuenta/perfil',
+          active: currentRoute === '/cuenta/perfil'
+        },
+        {
+          id: 'password',
+          label: 'Cambiar contraseña (en desarrollo)',
+          icon: LockClosedIcon,
+          route: '/cuenta/password',
+          active: currentRoute === '/cuenta/password'
+        },
+        {
+          id: 'facturacion',
+          label: 'Facturacion (en desarrollo)',
+          icon: CreditCardIcon,
+          route: '/cuenta/facturacion',
+          active: currentRoute === '/cuenta/facturacion'
+        },
+        {
+          id: 'plan',
+          label: 'Mi plan (en desarrollo)',
+          icon: StarIcon,
+          route: '/cuenta/plan',
+          active: currentRoute === '/cuenta/plan'
+        }
+      ]
+    },
+    // FUTURAS
+    {
+      category: '🚀 Próximamente',
+      items: [
+        {
+          id: 'academia',
+          label: 'Academia Doctrack (futuro)',
+          icon: AcademicCapIcon,
+          route: '/academia',
+          active: currentRoute === '/academia'
+        },
+        {
+          id: 'comunidad',
+          label: 'Comunidad Doctrack (futuro)',
+          icon: ChatBubbleLeftRightIcon,
+          route: '/comunidad',
+          active: currentRoute === '/comunidad'
+        },
+        {
+          id: 'marketplace',
+          label: 'Marketplace (futuro)',
+          icon: ShoppingBagIcon,
+          route: '/marketplace',
+          active: currentRoute === '/marketplace'
+        },
+        {
+          id: 'soporte',
+          label: 'Soporte',
+          icon: QuestionMarkCircleIcon,
+          route: '/soporte',
+          active: currentRoute === '/soporte'
+        }
+      ]
     }
   ];
 
   // Renderizar contenido según ruta
   const renderContent = () => {
     switch (currentRoute) {
-      case '/clients':
-        return <ClientesContent />;
-      case '/cases':
-        return <CasosContent />;
       case '/dashboard':
-        return (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
-              <h2 className="text-xl font-semibold text-slate-900 mb-4">Panel de Control</h2>
-              <p className="text-slate-600">Bienvenido al sistema de gestión de casos migratorios.</p>
-              <div className="grid grid-cols-2 gap-4 mt-6">
-                <button onClick={() => handleNavigation('/clients')} className="p-4 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors">
-                  <UserGroupIcon className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                  <p className="text-sm font-medium text-blue-900">Gestionar Clientes</p>
-                </button>
-                <button onClick={() => handleNavigation('/cases')} className="p-4 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors">
-                  <DocumentTextIcon className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                  <p className="text-sm font-medium text-green-900">Gestionar Casos</p>
-                </button>
-              </div>
-            </div>
-          </div>
-        );
+        return <MainDashboardContent dashboardData={dashboardData} />;
       default:
+        // Para todas las demás rutas, mostrar un contenido genérico
+        const currentItem = menuItems
+          .flatMap(category => category.items)
+          .find(item => item.route === currentRoute);
+        
         return (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
-              <h2 className="text-xl font-semibold text-slate-900 mb-4">Panel de Control</h2>
-              <p className="text-slate-600">Bienvenido al sistema de gestión de casos migratorios.</p>
-              <div className="grid grid-cols-2 gap-4 mt-6">
-                <button onClick={() => handleNavigation('/clients')} className="p-4 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors">
-                  <UserGroupIcon className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                  <p className="text-sm font-medium text-blue-900">Gestionar Clientes</p>
-                </button>
-                <button onClick={() => handleNavigation('/cases')} className="p-4 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors">
-                  <DocumentTextIcon className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                  <p className="text-sm font-medium text-green-900">Gestionar Casos</p>
-                </button>
-              </div>
-            </div>
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              {currentItem?.label || 'Página'}
+            </h2>
+            <p className="text-gray-600">
+              {currentItem?.label?.includes('(en desarrollo)') || currentItem?.label?.includes('(futuro)') 
+                ? 'Esta funcionalidad está en desarrollo y estará disponible próximamente.'
+                : 'Contenido de la página en desarrollo...'}
+            </p>
           </div>
         );
     }
   };
 
-  if (!currentUser) {
+  if (!currentUser || isLoading) {
     return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-slate-600">Verificando autenticación...</p>
+          <p className="text-gray-600">Cargando dashboard...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen bg-slate-50 flex overflow-hidden">
+    <div className="h-screen bg-gray-50 flex overflow-hidden">
       
-      {/* Sidebar */}
-      <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}>
+      {/* Sidebar con scroll */}
+      <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}>
         
         {/* Logo/Header */}
-        <div className="flex items-center justify-between h-16 px-6 border-b border-slate-200">
+        <div className="flex items-center h-16 px-6 border-b border-gray-100 flex-shrink-0">
           <div className="flex items-center">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
-              <HomeIcon className="w-5 h-5 text-white" />
-            </div>
-            <span className="ml-3 text-lg font-semibold text-slate-900">Doctrack</span>
+            <img 
+              src="/src/assets/doctrackIcon.png" 
+              alt="Doctrack Logo" 
+              className="w-6 h-6 mr-3"
+            />
+            <span className="text-xl font-semibold text-gray-900">Doctrack</span>
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden text-slate-400 hover:text-slate-600"
+            className="lg:hidden text-gray-400 hover:text-gray-600 ml-auto"
           >
             <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-2">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleNavigation(item.route)}
-                className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                  item.active
-                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                    : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-                }`}
-              >
-                <Icon className={`w-5 h-5 mr-3 ${item.active ? 'text-blue-600' : 'text-slate-400'}`} />
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
+        {/* Navigation con scroll */}
+        <div className="flex-1 overflow-y-auto py-4">
+          <nav className="px-4 space-y-6">
+            {menuItems.map((category, categoryIndex) => (
+              <div key={categoryIndex}>
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 mb-3">
+                  {category.category}
+                </h3>
+                <div className="space-y-1">
+                  {category.items.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => handleNavigation(item.route)}
+                        className={`w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+                          item.active
+                            ? 'bg-gray-900 text-white'
+                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                        }`}
+                      >
+                        <Icon className={`w-5 h-5 mr-3 flex-shrink-0 ${item.active ? 'text-white' : 'text-gray-400'}`} />
+                        <span className="truncate">{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </nav>
+        </div>
 
-        {/* User info & Logout */}
-        <div className="p-4 border-t border-slate-200">
-          <div className="flex items-center mb-4">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-blue-700 rounded-full flex items-center justify-center">
-              <span className="text-white font-semibold text-sm">
-                {currentUser?.name?.charAt(0) || 'U'}
-              </span>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-slate-900">{currentUser?.name || 'Usuario'}</p>
-              <p className="text-xs text-slate-500">Administrador</p>
-            </div>
-          </div>
-          
+        {/* Logout - Fixed at bottom */}
+        <div className="p-4 border-t border-gray-100 flex-shrink-0">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+            className="w-full flex items-center px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 rounded-lg transition-colors"
           >
-            <ArrowRightOnRectangleIcon className="w-5 h-5 mr-3" />
-            Cerrar Sesión
+            <ArrowRightOnRectangleIcon className="w-5 h-5 mr-3 text-gray-400 flex-shrink-0" />
+            <span>Salir</span>
           </button>
         </div>
       </div>
@@ -338,63 +825,31 @@ const Dashboard = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         
-        {/* Top Header */}
-        <header className="bg-white border-b border-slate-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="lg:hidden text-slate-500 hover:text-slate-700 mr-4"
-              >
-                <Bars3Icon className="w-6 h-6" />
-              </button>
-              
-              <div>
-                <h1 className="text-xl font-semibold text-slate-900">
-                  {currentRoute === '/clients' ? 'Gestión de Clientes' : 'Casos Migratorios'}
-                </h1>
-                <p className="text-sm text-slate-600 mt-1">
-                  {currentRoute === '/clients' 
-                    ? 'Administra y supervisa información de clientes' 
-                    : 'Seguimiento y gestión de casos migratorios'
-                  }
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg">
-                <BellIcon className="w-5 h-5" />
-              </button>
-              <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg">
-                <Cog6ToothIcon className="w-5 h-5" />
-              </button>
-              
-              <div className="flex items-center">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-blue-700 rounded-full flex items-center justify-center">
-                  <span className="text-white font-semibold text-sm">
-                    {currentUser?.name?.charAt(0) || 'U'}
-                  </span>
-                </div>
-                <div className="ml-3 hidden md:block">
-                  <p className="text-sm font-medium text-slate-900">{currentUser?.name || 'Usuario'}</p>
-                  <p className="text-xs text-slate-500">{currentUser?.email}</p>
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* Top Header - solo el botón hamburguesa para mobile */}
+        <header className="bg-white border-b border-gray-100 px-6 py-4 lg:hidden flex-shrink-0">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <Bars3Icon className="w-6 h-6" />
+          </button>
         </header>
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto p-6">
-          {renderContent()}
+          <div className="max-w-7xl mx-auto">
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+            </div>
+            {renderContent()}
+          </div>
         </main>
       </div>
 
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div 
-          className="fixed inset-0 z-40 bg-slate-600 bg-opacity-75 lg:hidden"
+          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
