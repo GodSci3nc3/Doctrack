@@ -13,14 +13,23 @@ const prisma = new PrismaClient();
 app.use(express.json());
 app.use(cookieParser());
 
+// CORS configuration - more permissive for proper preflight handling
 app.use(cors({
   origin: [
     'https://doctrack-phnt.vercel.app',
     'http://localhost:5173' // Para desarrollo local
   ],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'Cookie', 
+    'Set-Cookie',
+    'Access-Control-Allow-Credentials'
+  ],
+  exposedHeaders: ['Set-Cookie'],
+  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
 }));
 
 // Helpers para JWT y cookies
@@ -63,15 +72,27 @@ function authRequired(req, res, next) {
   }
 }
 
+// Debug middleware to log all requests
+app.use(function(req, res, next) {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url} - Origin: ${req.headers.origin}`);
+  next();
+});
+
+// Global OPTIONS handler for all routes
+app.options('*', function(req, res) {
+  console.log('OPTIONS request received for:', req.url);
+  res.status(200).end();
+});
+
 // === ENDPOINTS ===
 
 // Health
-app.get('/api/health', (_req, res) => {
+app.get('/api/health', function(_req, res) {
   res.json({ ok: true, service: 'Doctrack API', env: process.env.NODE_ENV || 'development' });
 });
 
 // LOGIN
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', async function(req, res) {
   try {
     const { email, password } = req.body || {};
     if (!email || !password) return res.status(400).json({ message: 'Email y contraseña requeridos' });
@@ -96,7 +117,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // REGISTRO
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', async function(req, res) {
   try {
     const { nombre, apellidos, email, password, rol } = req.body || {};
     
@@ -162,13 +183,34 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 // LOGOUT
-app.post('/api/auth/logout', (req, res) => {
+app.post('/api/auth/logout', function(req, res) {
   clearAuthCookies(res);
   return res.json({ ok: true });
 });
 
+// Catch-all route for unmatched requests
+app.all('*', function(req, res) {
+  console.log(`Unmatched route: ${req.method} ${req.url}`);
+  res.status(404).json({ 
+    message: 'Route not found',
+    method: req.method,
+    url: req.url,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Global error handler
+app.use(function(err, req, res, next) {
+  console.error('Global error handler:', err);
+  res.status(500).json({ 
+    message: 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // === START ===
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, function() {
   console.log(`Doctrack API escuchando en puerto ${PORT}`);
 });
