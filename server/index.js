@@ -93,27 +93,60 @@ app.get('/api/health', function(_req, res) {
 
 // LOGIN
 app.post('/api/auth/login', async function(req, res) {
+  console.log('--- LOGIN REQUEST START ---');
   try {
+    console.log('Step 1: Parsing request body');
     const { email, password } = req.body || {};
-    if (!email || !password) return res.status(400).json({ message: 'Email y contraseña requeridos' });
+    console.log('Step 2: Email provided:', email ? 'YES' : 'NO');
+    console.log('Step 3: Password provided:', password ? 'YES' : 'NO');
+    
+    if (!email || !password) {
+      console.log('Step 4: Validation failed - missing credentials');
+      return res.status(400).json({ message: 'Email y contraseña requeridos' });
+    }
 
+    console.log('Step 5: Checking environment variables');
+    if (!ACCESS_SECRET) {
+      console.error('CRITICAL: JWT_ACCESS_SECRET not set!');
+      return res.status(500).json({ message: 'Server configuration error' });
+    }
+
+    console.log('Step 6: Querying database for user with email:', email);
     const user = await prisma.usuariointerno.findUnique({ where: { email } });
-    if (!user) return res.status(401).json({ message: 'Credenciales inválidas' });
+    console.log('Step 7: User found:', user ? 'YES' : 'NO');
+    
+    if (!user) {
+      console.log('Step 8: User not found - returning invalid credentials');
+      return res.status(401).json({ message: 'Credenciales inválidas' });
+    }
 
+    console.log('Step 9: Comparing password with hash');
     const ok = await bcrypt.compare(password, user.contrase_a);
-    if (!ok) return res.status(401).json({ message: 'Credenciales inválidas' });
+    console.log('Step 10: Password match:', ok ? 'YES' : 'NO');
+    
+    if (!ok) {
+      console.log('Step 11: Password mismatch - returning invalid credentials');
+      return res.status(401).json({ message: 'Credenciales inválidas' });
+    }
 
+    console.log('Step 12: Generating tokens');
     const accessToken = signAccessToken({ sub: user.usuario_id, email: user.email, role: user.rol });
     const refreshToken = signRefreshToken({ sub: user.usuario_id });
+    console.log('Step 13: Tokens generated successfully');
 
+    console.log('Step 14: Setting cookies');
     setAuthCookies(res, { accessToken, refreshToken });
 
+    console.log('Step 15: Preparing response');
     const { contrase_a: _omit, ...safeUser } = user;
+    console.log('Step 16: Sending successful response');
     return res.json({ user: safeUser });
   } catch (err) {
-    console.error('LOGIN error:', err);
-    return res.status(500).json({ message: 'Error en login' });
+    console.error('LOGIN error at step:', err.message);
+    console.error('Full error:', err);
+    return res.status(500).json({ message: 'Error en login', error: err.message });
   }
+  console.log('--- LOGIN REQUEST END ---');
 });
 
 // REGISTRO
@@ -198,6 +231,33 @@ app.use(function(err, req, res, next) {
     timestamp: new Date().toISOString()
   });
 });
+
+// Environment validation on startup
+console.log('=== ENVIRONMENT VARIABLES ===');
+console.log('DATABASE_URL:', process.env.DATABASE_URL ? '[SET]' : '[NOT SET]');
+console.log('DIRECT_URL:', process.env.DIRECT_URL ? '[SET]' : '[NOT SET]');
+console.log('JWT_ACCESS_SECRET:', process.env.JWT_ACCESS_SECRET ? '[SET]' : '[NOT SET]');
+console.log('JWT_REFRESH_SECRET:', process.env.JWT_REFRESH_SECRET ? '[SET]' : '[NOT SET]');
+console.log('NODE_ENV:', process.env.NODE_ENV || 'development');
+console.log('================================');
+
+// Test database connection
+async function testDatabaseConnection() {
+  try {
+    console.log('Testing database connection...');
+    await prisma.$connect();
+    console.log('✅ Database connection successful');
+    
+    // Test if we can query the usuariointerno table
+    const userCount = await prisma.usuariointerno.count();
+    console.log(`✅ Found ${userCount} users in usuariointerno table`);
+  } catch (error) {
+    console.error('❌ Database connection failed:', error.message);
+    console.error('Full database error:', error);
+  }
+}
+
+testDatabaseConnection();
 
 // === START ===
 const PORT = process.env.PORT || 3000;
