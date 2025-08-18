@@ -9,29 +9,19 @@ import { PrismaClient } from '@prisma/client';
 const app = express();
 const prisma = new PrismaClient();
 
-
-
 // === CONFIG GENERAL ===
 app.use(express.json());
 app.use(cookieParser());
 
-// Ajusta estos orígenes:
-const FRONT_ORIGINS = [
-  'http://localhost:5173',
-  'https://doctrack-phnt.vercel.app'
-];
-
-app.use(
-  cors({
-    origin: (origin, cb) => {
-      // permitir requests sin origin (Postman/Healthchecks)
-      if (!origin) return cb(null, true);
-      if (FRONT_ORIGINS.includes(origin)) return cb(null, true);
-      return cb(new Error('Origin no permitido por CORS: ' + origin), false);
-    },
-    credentials: true
-  })
-);
+app.use(cors({
+  origin: [
+    'https://doctrack-phnt.vercel.app',
+    'http://localhost:5173' // Para desarrollo local
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Helpers para JWT y cookies
 const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
@@ -46,28 +36,27 @@ function signRefreshToken(payload) {
   return jwt.sign(payload, REFRESH_SECRET, { expiresIn: REFRESH_TTL });
 }
 function setAuthCookies(res, { accessToken, refreshToken }) {
-  // Cookies en dominios diferentes → SameSite=None + secure
   const common = {
     httpOnly: true,
-    secure: true,        // Render usa HTTPS
-    sameSite: 'none',    // porque front/back están en dominios distintos
-    path: '/',           // envía a todo el sitio
+    secure: true,
+    sameSite: 'none',
+    path: '/',
   };
-  res.cookie('doctrack_access', accessToken, { ...common, maxAge: 1000 * 60 * 60 }); // 1h (aunque el JWT sea 15m)
-  res.cookie('doctrack_refresh', refreshToken, { ...common, maxAge: 1000 * 60 * 60 * 24 * 7 }); // 7d
+  res.cookie('doctrack_access', accessToken, { ...common, maxAge: 1000 * 60 * 60 });
+  res.cookie('doctrack_refresh', refreshToken, { ...common, maxAge: 1000 * 60 * 60 * 24 * 7 });
 }
 function clearAuthCookies(res) {
   res.clearCookie('doctrack_access', { path: '/', sameSite: 'none', secure: true });
   res.clearCookie('doctrack_refresh', { path: '/', sameSite: 'none', secure: true });
 }
 
-// Middleware de autenticación (lee cookie de access)
+// Middleware de autenticación
 function authRequired(req, res, next) {
   const token = req.cookies?.doctrack_access;
   if (!token) return res.status(401).json({ message: 'No autenticado' });
   try {
     const payload = jwt.verify(token, ACCESS_SECRET);
-    req.user = payload; // { sub, email, role }
+    req.user = payload;
     next();
   } catch (err) {
     return res.status(401).json({ message: 'Token inválido o expirado' });
@@ -81,7 +70,7 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'Doctrack API', env: process.env.NODE_ENV || 'development' });
 });
 
-// 1) LOGIN
+// LOGIN
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body || {};
@@ -90,8 +79,6 @@ app.post('/api/auth/login', async (req, res) => {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) return res.status(401).json({ message: 'Credenciales inválidas' });
 
-    // IMPORTANTE: en tu DB guarda el PASSWORD **hasheado**
-    // Si aún guardas texto plano, primero corre un seed para hashearlos.
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) return res.status(401).json({ message: 'Credenciales inválidas' });
 
@@ -100,7 +87,6 @@ app.post('/api/auth/login', async (req, res) => {
 
     setAuthCookies(res, { accessToken, refreshToken });
 
-    // Devuelve el usuario sin password
     const { password: _omit, ...safeUser } = user;
     return res.json({ user: safeUser });
   } catch (err) {
@@ -109,15 +95,77 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// REGISTRO
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { nombre, apellidos, email, password, rol } = req.body || {};
+    
+    // Validaciones básicas
+    if (!nombre || !apellidos || !email || !password || !rol) {
+      return res.status(400).json({ message: 'Todos los campos son requeridos' });
+    }
 
-// 2) LOGOUT
+    if (password.length < 6) {
+      return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres' });
+    }
+
+    if (!['preparador', 'soporte'].includes(rol)) {
+      return res.status(400).json({ message: 'Rol inválido' });
+    }
+
+    // Verificar si el email ya existe
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ message: 'El email ya está registrado' });
+    }
+
+    // Hashear la contraseña
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // Crear usuario
+    const newUser = await prisma.user.create({
+      data: {
+        nombre,
+        apellidos,
+        email,
+        password: hashedPassword,
+        role: rol,
+        // Si es preparador se aprueba automáticamente, si es soporte queda pendiente
+        status: rol === 'preparador' ? 'active' : 'pending'
+      }
+    });
+
+    // Si es preparador, crear sesión automáticamente
+    if (rol === 'preparador') {
+      const accessToken = signAccessToken({ sub: newUser.id, email: newUser.email, role: newUser.role });
+      const refreshToken = signRefreshToken({ sub: newUser.id });
+
+      setAuthCookies(res, { accessToken, refreshToken });
+
+      const { password: _omit, ...safeUser } = newUser;
+      return res.json({ 
+        user: safeUser, 
+        message: 'Registro exitoso. Bienvenido al sistema.' 
+      });
+    } else {
+      // Si es soporte, solo confirmar registro sin crear sesión
+      return res.json({ 
+        message: 'Registro enviado correctamente. Tu cuenta está pendiente de aprobación por el equipo de soporte técnico.',
+        pending: true 
+      });
+    }
+
+  } catch (err) {
+    console.error('REGISTER error:', err);
+    return res.status(500).json({ message: 'Error en el registro' });
+  }
+});
+
+// LOGOUT
 app.post('/api/auth/logout', (req, res) => {
   clearAuthCookies(res);
   return res.json({ ok: true });
 });
-
-
-
 
 // === START ===
 const PORT = process.env.PORT || 3000;
