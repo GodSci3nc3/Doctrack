@@ -76,10 +76,10 @@ app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body || {};
     if (!email || !password) return res.status(400).json({ message: 'Email y contraseña requeridos' });
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.usuariointerno.findUnique({ where: { email } });
     if (!user) return res.status(401).json({ message: 'Credenciales inválidas' });
 
-    const ok = await bcrypt.compare(password, user.password);
+    const ok = await bcrypt.compare(password, user.contrase_a);
     if (!ok) return res.status(401).json({ message: 'Credenciales inválidas' });
 
     const accessToken = signAccessToken({ sub: user.id, email: user.email, role: user.role });
