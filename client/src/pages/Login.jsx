@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; // Añadir esta importación
 import { EyeIcon, EyeSlashIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 
-const Login = ({ onSwitchToRegister }) => {
+const Login = () => { // Remover la prop onSwitchToRegister
+  const navigate = useNavigate(); // Añadir este hook
 
   const [formData, setFormData] = useState({
     email: '',
@@ -65,7 +67,7 @@ const Login = ({ onSwitchToRegister }) => {
     setLoginError('');
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -99,6 +101,11 @@ const Login = ({ onSwitchToRegister }) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Función para ir a register
+  const handleSwitchToRegister = () => {
+    navigate('/register');
   };
 
   return (
@@ -212,7 +219,7 @@ const Login = ({ onSwitchToRegister }) => {
           <div className="mt-8 text-center">
             <span className="text-gray-500 text-base">¿Eres nuevo? </span>
             <button 
-              onClick={onSwitchToRegister}
+              onClick={handleSwitchToRegister} // Cambiar esto
               className="text-purple-600 hover:text-purple-700 font-medium text-base"
             >
               Crea tu cuenta aquí

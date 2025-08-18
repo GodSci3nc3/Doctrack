@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
+import Register from './pages/Register'; // Añadir esta importación
 import Dashboard from './pages/Dashboard';
 import Clients from './pages/Clients';
 import Cases from './pages/Cases';
@@ -54,6 +55,10 @@ const App = () => {
         <Route 
           path="/login" 
           element={isLoggedIn ? <Navigate to="/dashboard" /> : <Login />} 
+        />
+        <Route 
+          path="/register" 
+          element={isLoggedIn ? <Navigate to="/dashboard" /> : <Register />} 
         />
         <Route
           path="/dashboard"
