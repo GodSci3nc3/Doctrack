@@ -139,7 +139,7 @@ const Register = () => {
             <div className="flex items-center justify-center mb-4">
               <img 
                 src="/src/assets/doctrackIcon.png" 
-                alt="Doctrack Logo" 
+                alt="Doctrack Icono" 
                 className="w-8 h-8 mr-3"
               />
               <h1 className="text-3xl font-normal text-gray-900">Doctrack</h1>
