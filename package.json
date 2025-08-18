@@ -1,7 +1,7 @@
 {
-  "name": "doctrack-prototipo",
+  "name": "Doctrack",
   "version": "1.0.0",
-  "description": "Prototipo funcional de la app Doctrack (escritorio)",
+  "description": "Prototipo funcional de la app Doctrack",
   "author": "Arturo Rosales V <rosalesvelazquezarturo@email.com>",
   "main": "main.js",
   "homepage": "./",
