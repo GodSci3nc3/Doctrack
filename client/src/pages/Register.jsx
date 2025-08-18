@@ -1,32 +1,49 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; // Añadir esta importación
+import { useNavigate } from 'react-router-dom';
 import { EyeIcon, EyeSlashIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 
-const Login = () => { // Remover la prop onSwitchToRegister
-  const navigate = useNavigate(); // Añadir este hook
+const Register = () => {
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
+    nombre: '',
+    apellido: '',
     email: '',
-    password: ''
+    password: '',
+    confirmPassword: '',
+    rol: ''
   });
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [loginError, setLoginError] = useState('');
+  const [registerError, setRegisterError] = useState('');
 
   // Limpiar errores cuando el usuario empiece a escribir
   useEffect(() => {
     if (Object.keys(errors).length > 0) {
       setErrors({});
     }
-    if (loginError) {
-      setLoginError('');
+    if (registerError) {
+      setRegisterError('');
     }
   }, [formData]);
 
   // Validación del formulario
   const validateForm = () => {
     const newErrors = {};
+
+    if (!formData.nombre.trim()) {
+      newErrors.nombre = 'El nombre es requerido';
+    } else if (formData.nombre.length < 2) {
+      newErrors.nombre = 'El nombre debe tener al menos 2 caracteres';
+    }
+
+    if (!formData.apellido.trim()) {
+      newErrors.apellido = 'El apellido es requerido';
+    } else if (formData.apellido.length < 2) {
+      newErrors.apellido = 'El apellido debe tener al menos 2 caracteres';
+    }
 
     if (!formData.email.trim()) {
       newErrors.email = 'El correo electrónico es requerido';
@@ -38,6 +55,16 @@ const Login = () => { // Remover la prop onSwitchToRegister
       newErrors.password = 'La contraseña es requerida';
     } else if (formData.password.length < 6) {
       newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
+    }
+
+    if (!formData.confirmPassword.trim()) {
+      newErrors.confirmPassword = 'Confirma tu contraseña';
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Las contraseñas no coinciden';
+    }
+
+    if (!formData.rol) {
+      newErrors.rol = 'El rol es requerido';
     }
 
     setErrors(newErrors);
@@ -64,18 +91,21 @@ const Login = () => { // Remover la prop onSwitchToRegister
     }
 
     setIsLoading(true);
-    setLoginError('');
+    setRegisterError('');
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
         body: JSON.stringify({
+          nombre: formData.nombre,
+          apellido: formData.apellido,
           email: formData.email,
-          password: formData.password
+          password: formData.password,
+          rol: formData.rol
         }),
       });
 
@@ -86,26 +116,26 @@ const Login = () => { // Remover la prop onSwitchToRegister
         window.dispatchEvent(new Event('authChange'));
         
         // Mostrar mensaje de éxito
-        alert('Login exitoso! Redirigiendo al dashboard...');
+        alert('Registro exitoso! Bienvenido al sistema.');
         
-        // Aquí puedes redirigir al dashboard si tienes react-router
+        // El usuario ya está autenticado automáticamente, redirigir al dashboard
         // navigate('/dashboard');
         
       } else {
         const errorData = await response.json();
-        setLoginError(errorData.message || 'Credenciales incorrectas');
+        setRegisterError(errorData.message || 'Error al crear la cuenta');
       }
     } catch (error) {
-      console.error('Error en login:', error);
-      setLoginError('Error de conexión. Por favor, intenta de nuevo.');
+      console.error('Error en registro:', error);
+      setRegisterError('Error de conexión. Por favor, intenta de nuevo.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Función para ir a register
-  const handleSwitchToRegister = () => {
-    navigate('/register');
+  // Función para ir a login
+  const handleSwitchToLogin = () => {
+    navigate('/login');
   };
 
   return (
@@ -124,12 +154,56 @@ const Login = () => { // Remover la prop onSwitchToRegister
               />
               <h1 className="text-3xl font-normal text-gray-900">Doctrack</h1>
             </div>
-            <p className="text-gray-500 text-lg font-light">Inicia sesión</p>
+            <p className="text-gray-500 text-lg font-light">Crear cuenta</p>
           </div>
 
           {/* Formulario */}
-          <div className="space-y-8">
+          <div className="space-y-6">
             
+            {/* Campo Nombre */}
+            <div>
+              <label htmlFor="nombre" className="block text-lg font-medium text-gray-700 mb-3">
+                Nombre
+              </label>
+              <input
+                id="nombre"
+                name="nombre"
+                type="text"
+                value={formData.nombre}
+                onChange={handleInputChange}
+                className="w-full px-4 py-4 text-lg border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
+                placeholder="Ingresa tu nombre"
+              />
+              {errors.nombre && (
+                <div className="mt-3 flex items-center text-base text-red-600">
+                  <ExclamationCircleIcon className="w-5 h-5 mr-2" />
+                  {errors.nombre}
+                </div>
+              )}
+            </div>
+
+            {/* Campo Apellido */}
+            <div>
+              <label htmlFor="apellido" className="block text-lg font-medium text-gray-700 mb-3">
+                Apellido
+              </label>
+              <input
+                id="apellido"
+                name="apellido"
+                type="text"
+                value={formData.apellido}
+                onChange={handleInputChange}
+                className="w-full px-4 py-4 text-lg border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
+                placeholder="Ingresa tu apellido"
+              />
+              {errors.apellido && (
+                <div className="mt-3 flex items-center text-base text-red-600">
+                  <ExclamationCircleIcon className="w-5 h-5 mr-2" />
+                  {errors.apellido}
+                </div>
+              )}
+            </div>
+
             {/* Campo Email */}
             <div>
               <label htmlFor="email" className="block text-lg font-medium text-gray-700 mb-3">
@@ -152,6 +226,30 @@ const Login = () => { // Remover la prop onSwitchToRegister
               )}
             </div>
 
+            {/* Campo Rol */}
+            <div>
+              <label htmlFor="rol" className="block text-lg font-medium text-gray-700 mb-3">
+                Rol
+              </label>
+              <select
+                id="rol"
+                name="rol"
+                value={formData.rol}
+                onChange={handleInputChange}
+                className="w-full px-4 py-4 text-lg border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
+              >
+                <option value="">Selecciona tu rol</option>
+                <option value="preparador">Preparador</option>
+                <option value="soporte">Soporte</option>
+              </select>
+              {errors.rol && (
+                <div className="mt-3 flex items-center text-base text-red-600">
+                  <ExclamationCircleIcon className="w-5 h-5 mr-2" />
+                  {errors.rol}
+                </div>
+              )}
+            </div>
+
             {/* Campo Contraseña */}
             <div>
               <label htmlFor="password" className="block text-lg font-medium text-gray-700 mb-3">
@@ -165,7 +263,7 @@ const Login = () => { // Remover la prop onSwitchToRegister
                   value={formData.password}
                   onChange={handleInputChange}
                   className="w-full px-4 py-4 pr-12 text-lg border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
-                  placeholder="Ingresa tu contraseña"
+                  placeholder="Crea una contraseña"
                 />
                 <button
                   type="button"
@@ -187,17 +285,52 @@ const Login = () => { // Remover la prop onSwitchToRegister
               )}
             </div>
 
-            {/* Error de login */}
-            {loginError && (
+            {/* Campo Confirmar Contraseña */}
+            <div>
+              <label htmlFor="confirmPassword" className="block text-lg font-medium text-gray-700 mb-3">
+                Confirmar contraseña
+              </label>
+              <div className="relative">
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-4 pr-12 text-lg border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
+                  placeholder="Confirma tu contraseña"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
+                >
+                  {showConfirmPassword ? (
+                    <EyeSlashIcon className="h-6 w-6" />
+                  ) : (
+                    <EyeIcon className="h-6 w-6" />
+                  )}
+                </button>
+              </div>
+              {errors.confirmPassword && (
+                <div className="mt-3 flex items-center text-base text-red-600">
+                  <ExclamationCircleIcon className="w-5 h-5 mr-2" />
+                  {errors.confirmPassword}
+                </div>
+              )}
+            </div>
+
+            {/* Error de registro */}
+            {registerError && (
               <div className="bg-red-50 border border-red-200 rounded-md p-4">
                 <div className="flex items-center text-base text-red-700">
                   <ExclamationCircleIcon className="w-5 h-5 mr-3" />
-                  {loginError}
+                  {registerError}
                 </div>
               </div>
             )}
 
-            {/* Botón de acceder */}
+            {/* Botón de crear cuenta */}
             <button
               onClick={handleSubmit}
               disabled={isLoading}
@@ -206,23 +339,23 @@ const Login = () => { // Remover la prop onSwitchToRegister
               {isLoading ? (
                 <div className="flex items-center justify-center">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mr-3"></div>
-                  Accediendo...
+                  Creando cuenta...
                 </div>
               ) : (
-                'Acceder'
+                'Crear cuenta'
               )}
             </button>
 
           </div>
 
-          {/* Enlace para crear cuenta */}
+          {/* Enlace para iniciar sesión */}
           <div className="mt-8 text-center">
-            <span className="text-gray-500 text-base">¿Eres nuevo? </span>
+            <span className="text-gray-500 text-base">¿Ya tienes cuenta? </span>
             <button 
-              onClick={handleSwitchToRegister} // Cambiar esto
+              onClick={handleSwitchToLogin}
               className="text-purple-600 hover:text-purple-700 font-medium text-base"
             >
-              Crea tu cuenta aquí
+              Inicia sesión aquí
             </button>
           </div>
 
@@ -232,4 +365,4 @@ const Login = () => { // Remover la prop onSwitchToRegister
   );
 };
 
-export default Login;
+export default Register;
