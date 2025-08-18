@@ -103,12 +103,12 @@ app.post('/api/auth/login', async function(req, res) {
     const ok = await bcrypt.compare(password, user.contrase_a);
     if (!ok) return res.status(401).json({ message: 'Credenciales inválidas' });
 
-    const accessToken = signAccessToken({ sub: user.id, email: user.email, role: user.role });
-    const refreshToken = signRefreshToken({ sub: user.id });
+    const accessToken = signAccessToken({ sub: user.usuario_id, email: user.email, role: user.rol });
+    const refreshToken = signRefreshToken({ sub: user.usuario_id });
 
     setAuthCookies(res, { accessToken, refreshToken });
 
-    const { password: _omit, ...safeUser } = user;
+    const { contrase_a: _omit, ...safeUser } = user;
     return res.json({ user: safeUser });
   } catch (err) {
     console.error('LOGIN error:', err);
@@ -119,10 +119,10 @@ app.post('/api/auth/login', async function(req, res) {
 // REGISTRO
 app.post('/api/auth/register', async function(req, res) {
   try {
-    const { nombre, apellidos, email, password, rol } = req.body || {};
+    const { nombre, apellido, email, password, rol } = req.body || {};
     
     // Validaciones básicas
-    if (!nombre || !apellidos || !email || !password || !rol) {
+    if (!nombre || !apellido || !email || !password || !rol) {
       return res.status(400).json({ message: 'Todos los campos son requeridos' });
     }
 
@@ -135,7 +135,7 @@ app.post('/api/auth/register', async function(req, res) {
     }
 
     // Verificar si el email ya existe
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await prisma.usuariointerno.findUnique({ where: { email } });
     if (existingUser) {
       return res.status(400).json({ message: 'El email ya está registrado' });
     }
@@ -144,37 +144,27 @@ app.post('/api/auth/register', async function(req, res) {
     const hashedPassword = await bcrypt.hash(password, 12);
 
     // Crear usuario
-    const newUser = await prisma.user.create({
+    const newUser = await prisma.usuariointerno.create({
       data: {
         nombre,
-        apellidos,
+        apellido,
         email,
-        password: hashedPassword,
-        role: rol,
-        // Si es preparador se aprueba automáticamente, si es soporte queda pendiente
-        status: rol === 'preparador' ? 'active' : 'pending'
+        contrase_a: hashedPassword,
+        rol: rol
       }
     });
 
-    // Si es preparador, crear sesión automáticamente
-    if (rol === 'preparador') {
-      const accessToken = signAccessToken({ sub: newUser.id, email: newUser.email, role: newUser.role });
-      const refreshToken = signRefreshToken({ sub: newUser.id });
+    // Crear sesión automáticamente para cualquier usuario registrado
+    const accessToken = signAccessToken({ sub: newUser.usuario_id, email: newUser.email, role: newUser.rol });
+    const refreshToken = signRefreshToken({ sub: newUser.usuario_id });
 
-      setAuthCookies(res, { accessToken, refreshToken });
+    setAuthCookies(res, { accessToken, refreshToken });
 
-      const { password: _omit, ...safeUser } = newUser;
-      return res.json({ 
-        user: safeUser, 
-        message: 'Registro exitoso. Bienvenido al sistema.' 
-      });
-    } else {
-      // Si es soporte, solo confirmar registro sin crear sesión
-      return res.json({ 
-        message: 'Registro enviado correctamente. Tu cuenta está pendiente de aprobación por el equipo de soporte técnico.',
-        pending: true 
-      });
-    }
+    const { contrase_a: _omit, ...safeUser } = newUser;
+    return res.json({ 
+      user: safeUser, 
+      message: 'Registro exitoso. Bienvenido al sistema.' 
+    });
 
   } catch (err) {
     console.error('REGISTER error:', err);
