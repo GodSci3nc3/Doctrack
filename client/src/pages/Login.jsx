@@ -85,18 +85,18 @@ const Login = () => {
       if (response.ok) {
         const data = await response.json();
         
-        // CAMBIO 3: Almacenar token y datos de usuario si están disponibles
-        if (data.token) {
-          localStorage.setItem('authToken', data.token);
-        }
+        // Store user data and create a temporary token for authentication state
+        // Since the server uses cookies, we create a local token to track auth state
         if (data.user) {
           localStorage.setItem('user', JSON.stringify(data.user));
+          // Create a simple token to track authentication state
+          localStorage.setItem('authToken', 'authenticated');
         }
         
-        // Disparar evento de cambio de autenticación
+        // Trigger auth state change to notify App component
         window.dispatchEvent(new Event('authChange'));
         
-        // Redirigir al dashboard
+        // Redirect to dashboard
         navigate('/dashboard');
         
       } else {

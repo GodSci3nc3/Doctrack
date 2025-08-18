@@ -203,11 +203,10 @@ const Register = () => {
           {/* Logo y encabezado */}
           <div className="text-center mb-12">
             <div className="flex items-center justify-center mb-4">
-              <img 
-                src="/src/assets/doctrackIcon.png" 
-                alt="Doctrack Logo" 
-                className="w-8 h-8 mr-3"
-              />
+              {/* Using CSS icon instead of image for better Vercel deployment */}
+              <div className="w-8 h-8 mr-3 bg-blue-600 rounded flex items-center justify-center">
+                <span className="text-white text-sm font-bold">D</span>
+              </div>
               <h1 className="text-3xl font-normal text-gray-900">Doctrack</h1>
             </div>
             <p className="text-gray-500 text-lg font-light">Crear cuenta</p>
