@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { EyeIcon, EyeSlashIcon, ExclamationCircleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
-const Register = () => {
+const Register = ({ onSwitchToLogin }) => {
   const [formData, setFormData] = useState({
     nombre: '',
     apellidos: '',
@@ -84,7 +84,7 @@ const Register = () => {
     setRegisterSuccess('');
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/register`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -139,7 +139,7 @@ const Register = () => {
             <div className="flex items-center justify-center mb-4">
               <img 
                 src="/src/assets/doctrackIcon.png" 
-                alt="Doctrack Icono" 
+                alt="Doctrack Logo" 
                 className="w-8 h-8 mr-3"
               />
               <h1 className="text-3xl font-normal text-gray-900">Doctrack</h1>
@@ -316,7 +316,10 @@ const Register = () => {
           {/* Enlace para iniciar sesión */}
           <div className="mt-8 text-center">
             <span className="text-gray-500 text-base">¿Ya tienes cuenta? </span>
-            <button className="text-purple-600 hover:text-purple-700 font-medium text-base">
+            <button 
+              onClick={onSwitchToLogin}
+              className="text-purple-600 hover:text-purple-700 font-medium text-base"
+            >
               Iniciar sesión
             </button>
           </div>

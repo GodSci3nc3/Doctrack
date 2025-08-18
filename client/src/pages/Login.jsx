@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { EyeIcon, EyeSlashIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 
-const Login = () => {
+const Login = ({ onSwitchToRegister }) => {
 
   const [formData, setFormData] = useState({
     email: '',
@@ -65,7 +65,7 @@ const Login = () => {
     setLoginError('');
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -208,10 +208,14 @@ const Login = () => {
 
           </div>
 
-          {/* Enlace de olvido de contraseña */}
+          {/* Enlace para crear cuenta */}
           <div className="mt-8 text-center">
-            <button className="text-gray-500 hover:text-gray-700 font-normal text-base">
-              ¿Olvidaste tu contraseña?
+            <span className="text-gray-500 text-base">¿Eres nuevo? </span>
+            <button 
+              onClick={onSwitchToRegister}
+              className="text-purple-600 hover:text-purple-700 font-medium text-base"
+            >
+              Crea tu cuenta aquí
             </button>
           </div>
 
