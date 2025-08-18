@@ -106,7 +106,7 @@ const Register = () => {
 
     // Debug logs
     const apiUrl = import.meta.env.VITE_API_URL || 'https://doctrack-0jp0.onrender.com';
-    const fullUrl = `${apiUrl}/auth/register`;
+    const fullUrl = `${import.meta.env.VITE_API_URL}/auth/register`;
     console.log('🚀 Intentando registro...');
     console.log('📍 URL:', fullUrl);
     console.log('📦 Datos a enviar:', {
@@ -193,10 +193,7 @@ const Register = () => {
             </div>
             <p className="text-gray-500 text-lg font-light">Crear cuenta</p>
             
-            {/* Debug info - remover en producción */}
-            <div className="mt-4 p-2 bg-gray-100 rounded text-xs text-gray-600">
-              <div>API URL: {import.meta.env.VITE_API_URL || 'NO CONFIGURADA'}</div>
-            </div>
+            
           </div>
 
           {/* Formulario */}
