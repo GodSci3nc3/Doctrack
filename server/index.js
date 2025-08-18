@@ -59,7 +59,6 @@ function clearAuthCookies(res) {
   res.clearCookie('doctrack_refresh', { path: '/', sameSite: 'none', secure: true });
 }
 
-// Middleware de autenticación
 function authRequired(req, res, next) {
   const token = req.cookies?.doctrack_access;
   if (!token) return res.status(401).json({ message: 'No autenticado' });
