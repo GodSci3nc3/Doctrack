@@ -1,13 +1,15 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import cookieParser from 'cookie-parser';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
+import cookieParser from 'cookie-parser';
 import { PrismaClient } from '@prisma/client';
 
 const app = express();
 const prisma = new PrismaClient();
+
+
 
 // === CONFIG GENERAL ===
 app.use(express.json());
@@ -107,70 +109,14 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// 2) YO (ME)
-app.get('/api/auth/me', authRequired, async (req, res) => {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.sub },
-      select: { id: true, email: true, role: true }
-    });
-    if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
-    return res.json({ user });
-  } catch (err) {
-    console.error('ME error:', err);
-    return res.status(500).json({ message: 'Error' });
-  }
-});
 
-// 3) REFRESH (opcional simple, sin lista blanca)
-app.post('/api/auth/refresh', async (req, res) => {
-  try {
-    const r = req.cookies?.doctrack_refresh;
-    if (!r) return res.status(401).json({ message: 'Sin refresh token' });
-
-    let payload;
-    try {
-      payload = jwt.verify(r, REFRESH_SECRET); // { sub }
-    } catch (e) {
-      return res.status(401).json({ message: 'Refresh inválido o expirado' });
-    }
-
-    // Verifica que el usuario siga existiendo/activo
-    const user = await prisma.user.findUnique({ where: { id: payload.sub } });
-    if (!user) return res.status(401).json({ message: 'Refresh inválido' });
-
-    const accessToken = signAccessToken({ sub: user.id, email: user.email, role: user.role });
-    const refreshToken = signRefreshToken({ sub: user.id }); // puedes rotarlo si quieres
-
-    setAuthCookies(res, { accessToken, refreshToken });
-    return res.json({ ok: true });
-  } catch (err) {
-    console.error('REFRESH error:', err);
-    return res.status(500).json({ message: 'Error en refresh' });
-  }
-});
-
-// 4) LOGOUT
+// 2) LOGOUT
 app.post('/api/auth/logout', (req, res) => {
   clearAuthCookies(res);
   return res.json({ ok: true });
 });
 
-// 5) EJEMPLOS DE RUTAS PROTEGIDAS (CRUD mínimos)
-app.get('/api/clientes', authRequired, async (_req, res) => {
-  const data = await prisma.client.findMany({
-    include: { cases: true }
-  });
-  res.json(data);
-});
 
-app.post('/api/clientes', authRequired, async (req, res) => {
-  const { name, country, document, address, entryDate } = req.body || {};
-  const created = await prisma.client.create({
-    data: { name, country, document, address, entryDate: new Date(entryDate) }
-  });
-  res.status(201).json(created);
-});
 
 
 // === START ===
