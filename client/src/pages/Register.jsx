@@ -19,6 +19,17 @@ const Register = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [registerError, setRegisterError] = useState('');
 
+  // Debug: verificar variables de entorno
+  useEffect(() => {
+    console.log('🔧 DEBUGGING INFO:');
+    console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
+    console.log('VITE_MODE:', import.meta.env.MODE);
+    console.log('VITE_DEV:', import.meta.env.DEV);
+    console.log('VITE_PROD:', import.meta.env.PROD);
+    console.log('API URL completa sería:', `${import.meta.env.VITE_API_URL}/api/auth/register`);
+    console.log('All env vars:', import.meta.env);
+  }, []);
+
   // Limpiar errores cuando el usuario empiece a escribir
   useEffect(() => {
     if (Object.keys(errors).length > 0) {
@@ -93,8 +104,21 @@ const Register = () => {
     setIsLoading(true);
     setRegisterError('');
 
+    // Debug logs
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://doctrack-0jp0.onrender.com';
+    const fullUrl = `${apiUrl}/auth/register`;
+    console.log('🚀 Intentando registro...');
+    console.log('📍 URL:', fullUrl);
+    console.log('📦 Datos a enviar:', {
+      nombre: formData.nombre,
+      apellido: formData.apellido,
+      email: formData.email,
+      rol: formData.rol,
+      password: '[HIDDEN]'
+    });
+
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/register`, {
+      const response = await fetch(fullUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -109,8 +133,12 @@ const Register = () => {
         }),
       });
 
+      console.log('📨 Response status:', response.status);
+      console.log('📨 Response ok:', response.ok);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ Registro exitoso:', data);
         
         // Disparar evento de cambio de autenticación
         window.dispatchEvent(new Event('authChange'));
@@ -123,11 +151,20 @@ const Register = () => {
         
       } else {
         const errorData = await response.json();
+        console.error('❌ Error del servidor:', errorData);
         setRegisterError(errorData.message || 'Error al crear la cuenta');
       }
     } catch (error) {
-      console.error('Error en registro:', error);
-      setRegisterError('Error de conexión. Por favor, intenta de nuevo.');
+      console.error('💥 Error de conexión:', error);
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      
+      // Error más específico para debugging
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        setRegisterError(`Error de conexión. ¿Está el servidor corriendo en ${apiUrl}?`);
+      } else {
+        setRegisterError('Error de conexión. Por favor, intenta de nuevo.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -155,6 +192,11 @@ const Register = () => {
               <h1 className="text-3xl font-normal text-gray-900">Doctrack</h1>
             </div>
             <p className="text-gray-500 text-lg font-light">Crear cuenta</p>
+            
+            {/* Debug info - remover en producción */}
+            <div className="mt-4 p-2 bg-gray-100 rounded text-xs text-gray-600">
+              <div>API URL: {import.meta.env.VITE_API_URL || 'NO CONFIGURADA'}</div>
+            </div>
           </div>
 
           {/* Formulario */}
