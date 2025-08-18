@@ -31,10 +31,7 @@ import {
   StarIcon
 } from '@heroicons/react/24/outline';
 
-import { useLocation, useNavigate } from 'react-router-dom';
-
-// CAMBIO 1: Mover RobotIcon fuera del import principal para evitar conflictos
-// Si no tienes este ícono, usa uno alternativo
+// Componente de ícono personalizado para IA
 const RobotIcon = ({ className }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
@@ -42,301 +39,348 @@ const RobotIcon = ({ className }) => (
   </svg>
 );
 
-// Componente de contenido principal del Dashboard
-const MainDashboardContent = ({ dashboardData }) => (
-  <div className="space-y-6">
-    {/* Header con botones */}
-    <div className="flex items-center justify-between">
-      <div className="flex items-center space-x-4">
-        <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 flex items-center space-x-2">
-          <input
-            type="text"
-            placeholder="Buscar..."
-            className="border-0 focus:ring-0 focus:outline-none text-sm bg-transparent"
-          />
-        </div>
-        <button className="w-10 h-10 bg-white rounded-lg border border-gray-200 flex items-center justify-center shadow-sm">
-          <div className="w-6 h-6 bg-gray-300 rounded-full"></div>
-        </button>
-      </div>
-      
-      <div className="flex items-center space-x-3">
-        <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 text-sm font-medium">
-          <PlusIcon className="w-4 h-4" />
-          <span>New Client</span>
-        </button>
-        <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 text-sm font-medium">
-          <PlusIcon className="w-4 h-4" />
-          <span>New Case</span>
-        </button>
-      </div>
-    </div>
+// Configuración del menú (movida fuera del componente para mejor performance)
+const menuConfig = [
+  {
+    category: '🏠 Inicio',
+    items: [
+      { id: 'dashboard', label: 'Escritorio', icon: HomeIcon, route: '/dashboard' },
+      { id: 'agenda', label: 'Agenda (en desarrollo)', icon: CalendarIcon, route: '/agenda' }
+    ]
+  },
+  {
+    category: '📁 Casos Migratorios',
+    items: [
+      { id: 'casos-lista', label: 'Lista de casos', icon: BriefcaseIcon, route: '/casos' },
+      { id: 'casos-nuevo', label: 'Nuevo Caso', icon: PlusIcon, route: '/casos/nuevo' },
+      { id: 'casos-tracking', label: 'Case tracking (en desarrollo)', icon: EyeIcon, route: '/casos/tracking' },
+      { id: 'casos-ia', label: 'Revision IA (en desarrollo)', icon: RobotIcon, route: '/casos/ia' }
+    ]
+  },
+  {
+    category: '👤 Clientes',
+    items: [
+      { id: 'clientes-lista', label: 'Lista de clientes', icon: UserGroupIcon, route: '/clientes' },
+      { id: 'clientes-nuevo', label: 'Nuevo Cliente', icon: PlusIcon, route: '/clientes/nuevo' },
+      { id: 'contratos', label: 'Contratos (en desarrollo)', icon: DocumentDuplicateIcon, route: '/contratos' }
+    ]
+  },
+  {
+    category: '📄 Documentos',
+    items: [
+      { id: 'documentos-lista', label: 'Listado de documentos', icon: DocumentIcon, route: '/documentos' },
+      { id: 'plantillas', label: 'Plantillas y modelos (en desarrollo)', icon: ClipboardDocumentListIcon, route: '/plantillas' }
+    ]
+  },
+  {
+    category: '💰 Pagos & Reportes',
+    items: [
+      { id: 'pagos-resumen', label: 'Resumen de pagos (en desarrollo)', icon: CurrencyDollarIcon, route: '/pagos' },
+      { id: 'detalle-caso', label: 'Detalle caso/cliente (en desarrollo)', icon: ChartBarIcon, route: '/detalle' },
+      { id: 'reportes', label: 'Generacion de reportes (en desarrollo)', icon: DocumentTextIcon, route: '/reportes' },
+      { id: 'negocios', label: 'Negocios realizados (en desarrollo)', icon: BuildingOfficeIcon, route: '/negocios' },
+      { id: 'correos', label: 'Correos enviados (en desarrollo)', icon: EnvelopeIcon, route: '/correos' }
+    ]
+  },
+  {
+    category: '👥 Usuarios',
+    items: [
+      { id: 'usuarios-lista', label: 'Lista de usuarios (en desarrollo)', icon: UsersIcon, route: '/usuarios' },
+      { id: 'usuarios-agregar', label: 'Agregar usuario (en desarrollo)', icon: PlusIcon, route: '/usuarios/nuevo' }
+    ]
+  },
+  {
+    category: '🌐 Sitio Web',
+    items: [
+      { id: 'servicios', label: 'Servicios (en desarrollo)', icon: GlobeAltIcon, route: '/servicios' },
+      { id: 'contenidos', label: 'Contenidos (en desarrollo)', icon: DocumentTextIcon, route: '/contenidos' },
+      { id: 'empresa', label: 'Nuestra empresa (en desarrollo)', icon: BuildingOfficeIcon, route: '/empresa' },
+      { id: 'privacidad', label: 'Politicas de privacidad (en desarrollo)', icon: LockClosedIcon, route: '/privacidad' }
+    ]
+  },
+  {
+    category: '🛠️ Configuración',
+    items: [
+      { id: 'info-empresa', label: 'Informacion empresa (en desarrollo)', icon: BuildingOfficeIcon, route: '/config/empresa' },
+      { id: 'dominio', label: 'Dominio y pagina web (en desarrollo)', icon: GlobeAltIcon, route: '/config/dominio' },
+      { id: 'plantillas-web', label: 'Plantillas pagina web (en desarrollo)', icon: DocumentIcon, route: '/config/plantillas-web' },
+      { id: 'tipos-cliente', label: 'Tipos de cliente (en desarrollo)', icon: UserGroupIcon, route: '/config/tipos-cliente' },
+      { id: 'integraciones', label: 'Integraciones (en desarrollo)', icon: Cog6ToothIcon, route: '/config/integraciones' },
+      { id: 'ajustes', label: 'Ajustes generales (en desarrollo)', icon: Cog6ToothIcon, route: '/config/ajustes' },
+      { id: 'permisos', label: 'Permisos (en desarrollo)', icon: LockClosedIcon, route: '/config/permisos' },
+      { id: 'notificaciones', label: 'Notificaciones (en desarrollo)', icon: BellIcon, route: '/config/notificaciones' }
+    ]
+  },
+  {
+    category: '🧑 Mi cuenta',
+    items: [
+      { id: 'perfil', label: 'Modificar mi perfil (en desarrollo)', icon: UserIcon, route: '/cuenta/perfil' },
+      { id: 'password', label: 'Cambiar contraseña (en desarrollo)', icon: LockClosedIcon, route: '/cuenta/password' },
+      { id: 'facturacion', label: 'Facturacion (en desarrollo)', icon: CreditCardIcon, route: '/cuenta/facturacion' },
+      { id: 'plan', label: 'Mi plan (en desarrollo)', icon: StarIcon, route: '/cuenta/plan' }
+    ]
+  },
+  {
+    category: '🚀 Próximamente',
+    items: [
+      { id: 'academia', label: 'Academia Doctrack (futuro)', icon: AcademicCapIcon, route: '/academia' },
+      { id: 'comunidad', label: 'Comunidad Doctrack (futuro)', icon: ChatBubbleLeftRightIcon, route: '/comunidad' },
+      { id: 'marketplace', label: 'Marketplace (futuro)', icon: ShoppingBagIcon, route: '/marketplace' },
+      { id: 'soporte', label: 'Soporte', icon: QuestionMarkCircleIcon, route: '/soporte' }
+    ]
+  }
+];
 
-    {/* Cards principales */}
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-        <div className="flex items-center justify-between mb-4">
-          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-            <UserGroupIcon className="w-6 h-6 text-blue-600" />
-          </div>
-        </div>
-        <div className="text-2xl font-bold text-gray-900 mb-1">
-          {dashboardData?.clientes || '120'}
-        </div>
-        <div className="text-sm text-gray-500">Clientes</div>
-      </div>
-
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-        <div className="flex items-center justify-between mb-4">
-          <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-            <BriefcaseIcon className="w-6 h-6 text-orange-600" />
-          </div>
-        </div>
-        <div className="text-2xl font-bold text-gray-900 mb-1">
-          {dashboardData?.casosActivos || '45'}
-        </div>
-        <div className="text-sm text-gray-500">Casos Activos</div>
-      </div>
-
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-        <div className="flex items-center justify-between mb-4">
-          <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-            <div className="w-6 h-6 bg-green-600 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs font-bold">✓</span>
-            </div>
-          </div>
-        </div>
-        <div className="text-2xl font-bold text-gray-900 mb-1">
-          {dashboardData?.casosCompletados || '75'}
-        </div>
-        <div className="text-sm text-gray-500">Casos Completados</div>
-      </div>
-
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-        <div className="flex items-center justify-between mb-4">
-          <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-            <DocumentIcon className="w-6 h-6 text-red-600" />
-          </div>
-        </div>
-        <div className="text-2xl font-bold text-gray-900 mb-1">
-          {dashboardData?.documentosPendientes || '15'}
-        </div>
-        <div className="text-sm text-gray-500">Documentos Pendientes</div>
-      </div>
-    </div>
-
-    {/* Secciones inferiores - Responsive */}
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Resumen de Clientes */}
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">Resumen de Clientes</h3>
-          <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-            Ver todos los clientes
-          </button>
-        </div>
-        <p className="text-gray-500 text-sm mb-6">
-          Vista general de la base de clientes, incluyendo nuevos registros y actividad reciente.
-        </p>
-        <div className="space-y-4">
-          {dashboardData?.clientesRecientes?.slice(0, 4).map((cliente, idx) => (
-            <div key={idx} className="flex items-center justify-between py-2">
-              <span className="text-sm text-gray-700 font-medium">{cliente.nombre_completo}</span>
-              <span className="text-xs text-gray-500">
-                Hace {cliente.dias_registro} día{cliente.dias_registro !== 1 ? 's' : ''}
-              </span>
-            </div>
-          )) || (
-            <>
-              <div className="flex items-center justify-between py-2">
-                <span className="text-sm text-gray-700 font-medium">María González</span>
-                <span className="text-xs text-gray-500">Hace 1 día</span>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <span className="text-sm text-gray-700 font-medium">Carlos Rivera</span>
-                <span className="text-xs text-gray-500">Hace 2 días</span>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <span className="text-sm text-gray-700 font-medium">Ana Martínez</span>
-                <span className="text-xs text-gray-500">Hace 3 días</span>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <span className="text-sm text-gray-700 font-medium">José López</span>
-                <span className="text-xs text-gray-500">Hace 4 días</span>
-              </div>
-            </>
-          )}
+// Componente para el contenido principal del Dashboard
+const MainDashboardContent = ({ dashboardData, isLoading }) => {
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando datos del dashboard...</p>
         </div>
       </div>
+    );
+  }
 
-      {/* Resumen de Casos */}
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">Resumen de Casos</h3>
-          <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-            Ver todos los casos
-          </button>
+  const statsData = [
+    {
+      icon: UserGroupIcon,
+      iconBg: 'bg-blue-100',
+      iconColor: 'text-blue-600',
+      value: dashboardData?.clientes || '0',
+      label: 'Clientes'
+    },
+    {
+      icon: BriefcaseIcon,
+      iconBg: 'bg-orange-100',
+      iconColor: 'text-orange-600',
+      value: dashboardData?.casosActivos || '0',
+      label: 'Casos Activos'
+    },
+    {
+      icon: () => (
+        <div className="w-6 h-6 bg-green-600 rounded-full flex items-center justify-center">
+          <span className="text-white text-xs font-bold">✓</span>
         </div>
-        <p className="text-gray-500 text-sm mb-6">
-          Estado actual de los casos migratorios, próximos plazos y casos recientes.
-        </p>
-        <div className="space-y-4">
-          {dashboardData?.casosRecientes?.map((caso, idx) => (
-            <div key={idx} className="flex items-center justify-between py-2">
-              <div className="flex items-center space-x-3">
-                <span className="text-sm text-gray-700 font-medium">{caso.cliente}</span>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  caso.estado === 'Aprobado' ? 'bg-green-100 text-green-800' :
-                  caso.estado === 'En proceso' ? 'bg-blue-100 text-blue-800' :
-                  'bg-yellow-100 text-yellow-800'
-                }`}>
-                  {caso.estado}
-                </span>
-              </div>
-              <span className="text-xs text-gray-500">{caso.fecha}</span>
-            </div>
-          )) || (
-            <>
-              <div className="flex items-center justify-between py-2">
-                <div className="flex items-center space-x-3">
-                  <span className="text-sm text-gray-700 font-medium">María González</span>
-                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">En proceso</span>
-                </div>
-                <span className="text-xs text-gray-500">15/01/2025</span>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <div className="flex items-center space-x-3">
-                  <span className="text-sm text-gray-700 font-medium">Carlos Rivera</span>
-                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Documentos</span>
-                </div>
-                <span className="text-xs text-gray-500">14/01/2025</span>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <div className="flex items-center space-x-3">
-                  <span className="text-sm text-gray-700 font-medium">Ana Martínez</span>
-                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Revisión</span>
-                </div>
-                <span className="text-xs text-gray-500">13/01/2025</span>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <div className="flex items-center space-x-3">
-                  <span className="text-sm text-gray-700 font-medium">José López</span>
-                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Aprobado</span>
-                </div>
-                <span className="text-xs text-gray-500">12/01/2025</span>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-
-    {/* Checklist Pendientes */}
-    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-gray-900">Checklist Pendientes</h3>
-        <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-          Gestionar checklists
-        </button>
-      </div>
-      <p className="text-gray-500 text-sm mb-6">
-        Tareas y documentos pendientes para completar casos.
-      </p>
-      <div className="space-y-3">
-        {dashboardData?.checklistPendientes?.map((item, idx) => (
-          <div key={idx} className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center space-x-3">
-              <div className="w-4 h-4 border-2 border-gray-300 rounded"></div>
-              <div>
-                <span className="text-sm font-medium text-gray-900">{item.tarea}</span>
-                <div className="text-xs text-gray-500">{item.cliente}</div>
-              </div>
-            </div>
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-              item.prioridad === 'alta' ? 'bg-red-100 text-red-800' :
-              item.prioridad === 'media' ? 'bg-yellow-100 text-yellow-800' :
-              'bg-gray-100 text-gray-800'
-            }`}>
-              {item.fecha_limite}
-            </span>
-          </div>
-        )) || (
-          <>
-            <div className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center space-x-3">
-                <div className="w-4 h-4 border-2 border-gray-300 rounded"></div>
-                <div>
-                  <span className="text-sm font-medium text-gray-900">Revisar documentos de identidad</span>
-                  <div className="text-xs text-gray-500">María González</div>
-                </div>
-              </div>
-              <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">20/01/2025</span>
-            </div>
-            <div className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center space-x-3">
-                <div className="w-4 h-4 border-2 border-gray-300 rounded"></div>
-                <div>
-                  <span className="text-sm font-medium text-gray-900">Completar formulario I-485</span>
-                  <div className="text-xs text-gray-500">Carlos Rivera</div>
-                </div>
-              </div>
-              <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">18/01/2025</span>
-            </div>
-            <div className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center space-x-3">
-                <div className="w-4 h-4 border-2 border-gray-300 rounded"></div>
-                <div>
-                  <span className="text-sm font-medium text-gray-900">Agendar entrevista</span>
-                  <div className="text-xs text-gray-500">Ana Martínez</div>
-                </div>
-              </div>
-              <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">25/01/2025</span>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  </div>
-);
-
-const Dashboard = () => {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [currentRoute, setCurrentRoute] = useState('/dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [dashboardData, setDashboardData] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  // CAMBIO 2: Agregar variable de entorno con fallback
-  const API_URL = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
-
-  // Logout function
-  const handleLogout = async () => {
-    try {
-      // Llamar a la API de logout
-      await fetch(`${API_URL}/auth/logout`, {
-        method: 'POST',
-        credentials: 'include'
-      });
-    } catch (error) {
-      console.error('Error during logout:', error);
+      ),
+      iconBg: 'bg-green-100',
+      iconColor: '',
+      value: dashboardData?.casosCompletados || '0',
+      label: 'Casos Completados'
+    },
+    {
+      icon: DocumentIcon,
+      iconBg: 'bg-red-100',
+      iconColor: 'text-red-600',
+      value: dashboardData?.documentosPendientes || '0',
+      label: 'Documentos Pendientes'
     }
-    
-    // Clear localStorage
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
-    
-    // Trigger auth state change to notify App component
-    window.dispatchEvent(new Event('authChange'));
-    
-    // Redirect to login
-    navigate('/login');
+  ];
+
+  const defaultClientes = [
+    { nombre_completo: 'María González', dias_registro: 1 },
+    { nombre_completo: 'Carlos Rivera', dias_registro: 2 },
+    { nombre_completo: 'Ana Martínez', dias_registro: 3 },
+    { nombre_completo: 'José López', dias_registro: 4 }
+  ];
+
+  const defaultCases = [
+    { cliente: 'María González', estado: 'En proceso', fecha: '15/01/2025' },
+    { cliente: 'Carlos Rivera', estado: 'Documentos', fecha: '14/01/2025' },
+    { cliente: 'Ana Martínez', estado: 'Revisión', fecha: '13/01/2025' },
+    { cliente: 'José López', estado: 'Aprobado', fecha: '12/01/2025' }
+  ];
+
+  const defaultChecklist = [
+    { tarea: 'Revisar documentos de identidad', cliente: 'María González', fecha_limite: '20/01/2025', prioridad: 'alta' },
+    { tarea: 'Completar formulario I-485', cliente: 'Carlos Rivera', fecha_limite: '18/01/2025', prioridad: 'media' },
+    { tarea: 'Agendar entrevista', cliente: 'Ana Martínez', fecha_limite: '25/01/2025', prioridad: 'baja' }
+  ];
+
+  const getStatusColor = (estado) => {
+    const colors = {
+      'Aprobado': 'bg-green-100 text-green-800',
+      'En proceso': 'bg-blue-100 text-blue-800',
+      'Documentos': 'bg-yellow-100 text-yellow-800',
+      'Revisión': 'bg-yellow-100 text-yellow-800'
+    };
+    return colors[estado] || 'bg-gray-100 text-gray-800';
   };
 
-  // Función para cargar datos del dashboard
+  const getPriorityColor = (prioridad) => {
+    const colors = {
+      'alta': 'bg-red-100 text-red-800',
+      'media': 'bg-yellow-100 text-yellow-800',
+      'baja': 'bg-gray-100 text-gray-800'
+    };
+    return colors[prioridad] || 'bg-gray-100 text-gray-800';
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header con botones */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 flex items-center space-x-2">
+            <input
+              type="text"
+              placeholder="Buscar..."
+              className="border-0 focus:ring-0 focus:outline-none text-sm bg-transparent"
+            />
+          </div>
+          <button className="w-10 h-10 bg-white rounded-lg border border-gray-200 flex items-center justify-center shadow-sm">
+            <div className="w-6 h-6 bg-gray-300 rounded-full"></div>
+          </button>
+        </div>
+        
+        <div className="flex items-center space-x-3">
+          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 text-sm font-medium">
+            <PlusIcon className="w-4 h-4" />
+            <span>New Client</span>
+          </button>
+          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 text-sm font-medium">
+            <PlusIcon className="w-4 h-4" />
+            <span>New Case</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Cards principales */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {statsData.map((stat, index) => {
+          const Icon = stat.icon;
+          return (
+            <div key={index} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+              <div className="flex items-center justify-between mb-4">
+                <div className={`w-12 h-12 ${stat.iconBg} rounded-lg flex items-center justify-center`}>
+                  <Icon className={`w-6 h-6 ${stat.iconColor}`} />
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-gray-900 mb-1">
+                {stat.value}
+              </div>
+              <div className="text-sm text-gray-500">{stat.label}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Secciones inferiores - Responsive */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Resumen de Clientes */}
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-900">Resumen de Clientes</h3>
+            <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+              Ver todos los clientes
+            </button>
+          </div>
+          <p className="text-gray-500 text-sm mb-6">
+            Vista general de la base de clientes, incluyendo nuevos registros y actividad reciente.
+          </p>
+          <div className="space-y-4">
+            {(dashboardData?.clientesRecientes?.slice(0, 4) || defaultClientes).map((cliente, idx) => (
+              <div key={idx} className="flex items-center justify-between py-2">
+                <span className="text-sm text-gray-700 font-medium">{cliente.nombre_completo}</span>
+                <span className="text-xs text-gray-500">
+                  Hace {cliente.dias_registro} día{cliente.dias_registro !== 1 ? 's' : ''}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Resumen de Casos */}
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-900">Resumen de Casos</h3>
+            <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+              Ver todos los casos
+            </button>
+          </div>
+          <p className="text-gray-500 text-sm mb-6">
+            Estado actual de los casos migratorios, próximos plazos y casos recientes.
+          </p>
+          <div className="space-y-4">
+            {(dashboardData?.casosRecientes || defaultCases).map((caso, idx) => (
+              <div key={idx} className="flex items-center justify-between py-2">
+                <div className="flex items-center space-x-3">
+                  <span className="text-sm text-gray-700 font-medium">{caso.cliente}</span>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(caso.estado)}`}>
+                    {caso.estado}
+                  </span>
+                </div>
+                <span className="text-xs text-gray-500">{caso.fecha}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Checklist Pendientes */}
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-gray-900">Checklist Pendientes</h3>
+          <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+            Gestionar checklists
+          </button>
+        </div>
+        <p className="text-gray-500 text-sm mb-6">
+          Tareas y documentos pendientes para completar casos.
+        </p>
+        <div className="space-y-3">
+          {(dashboardData?.checklistPendientes || defaultChecklist).map((item, idx) => (
+            <div key={idx} className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center space-x-3">
+                <div className="w-4 h-4 border-2 border-gray-300 rounded"></div>
+                <div>
+                  <span className="text-sm font-medium text-gray-900">{item.tarea}</span>
+                  <div className="text-xs text-gray-500">{item.cliente}</div>
+                </div>
+              </div>
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(item.prioridad)}`}>
+                {item.fecha_limite}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Componente para los elementos de menú
+const MenuItem = ({ item, isActive, onNavigate }) => {
+  const Icon = item.icon;
+  return (
+    <button
+      onClick={() => onNavigate(item.route)}
+      className={`w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+        isActive
+          ? 'bg-gray-900 text-white'
+          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+      }`}
+    >
+      <Icon className={`w-5 h-5 mr-3 flex-shrink-0 ${isActive ? 'text-white' : 'text-gray-400'}`} />
+      <span className="truncate">{item.label}</span>
+    </button>
+  );
+};
+
+// Hook personalizado para la gestión de datos del dashboard
+const useDashboardData = () => {
+  const [dashboardData, setDashboardData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  const API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost' 
+    ? 'http://localhost:3000' 
+    : 'https://doctrack-0jp0.onrender.com';
+
   const loadDashboardData = async () => {
     try {
+      setIsLoading(true);
       const [statsRes, clientesRes, casosRes, checklistRes] = await Promise.all([
         fetch(`${API_URL}/api/dashboard/stats`, { credentials: 'include' }),
         fetch(`${API_URL}/api/dashboard/clientes-resumen`, { credentials: 'include' }),
@@ -364,7 +408,47 @@ const Dashboard = () => {
     }
   };
 
-  // Verificar autenticación al cargar
+  return { dashboardData, isLoading, loadDashboardData };
+};
+
+// Componente principal del Dashboard
+const Dashboard = () => {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [currentRoute, setCurrentRoute] = useState('/dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { dashboardData, isLoading, loadDashboardData } = useDashboardData();
+
+  const API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost' 
+    ? 'http://localhost:3000' 
+    : 'https://doctrack-0jp0.onrender.com';
+
+  // Función de logout mejorada
+  const handleLogout = async () => {
+    try {
+      await fetch(`${API_URL}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
+    
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
+    window.dispatchEvent(new Event('authChange'));
+    
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
+  };
+
+  // Navegación interna
+  const handleNavigation = (route) => {
+    setCurrentRoute(route);
+    setSidebarOpen(false);
+  };
+
+  // Verificar autenticación y cargar datos
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     const userData = localStorage.getItem('user');
@@ -386,375 +470,32 @@ const Dashboard = () => {
     }
   }, []);
 
-  // Navegación interna
-  const handleNavigation = (route) => {
-    setCurrentRoute(route);
-    setSidebarOpen(false);
-    navigate(route);
-  };
-  
-  // Set initial route based on location
-  useEffect(() => {
-    setCurrentRoute(location.pathname);
-  }, [location.pathname]);
-
-  // Configuración completa de menú
-  const menuItems = [
-    // INICIO
-    {
-      category: '🏠 Inicio',
-      items: [
-        {
-          id: 'dashboard',
-          label: 'Escritorio',
-          icon: HomeIcon,
-          route: '/dashboard',
-          active: currentRoute === '/dashboard'
-        },
-        {
-          id: 'agenda',
-          label: 'Agenda (en desarrollo)',
-          icon: CalendarIcon,
-          route: '/agenda',
-          active: currentRoute === '/agenda'
-        }
-      ]
-    },
-    // CASOS MIGRATORIOS
-    {
-      category: '📁 Casos Migratorios',
-      items: [
-        {
-          id: 'casos-lista',
-          label: 'Lista de casos',
-          icon: BriefcaseIcon,
-          route: '/casos',
-          active: currentRoute === '/casos'
-        },
-        {
-          id: 'casos-nuevo',
-          label: 'Nuevo Caso',
-          icon: PlusIcon,
-          route: '/casos/nuevo',
-          active: currentRoute === '/casos/nuevo'
-        },
-        {
-          id: 'casos-tracking',
-          label: 'Case tracking (en desarrollo)',
-          icon: EyeIcon,
-          route: '/casos/tracking',
-          active: currentRoute === '/casos/tracking'
-        },
-        {
-          id: 'casos-ia',
-          label: 'Revision IA (en desarrollo)',
-          icon: RobotIcon, // CAMBIO 3: Usar el componente RobotIcon personalizado
-          route: '/casos/ia',
-          active: currentRoute === '/casos/ia'
-        }
-      ]
-    },
-    // CLIENTES
-    {
-      category: '👤 Clientes',
-      items: [
-        {
-          id: 'clientes-lista',
-          label: 'Lista de clientes',
-          icon: UserGroupIcon,
-          route: '/clientes',
-          active: currentRoute === '/clientes'
-        },
-        {
-          id: 'clientes-nuevo',
-          label: 'Nuevo Cliente',
-          icon: PlusIcon,
-          route: '/clientes/nuevo',
-          active: currentRoute === '/clientes/nuevo'
-        },
-        {
-          id: 'contratos',
-          label: 'Contratos (en desarrollo)',
-          icon: DocumentDuplicateIcon,
-          route: '/contratos',
-          active: currentRoute === '/contratos'
-        }
-      ]
-    },
-    // DOCUMENTOS
-    {
-      category: '📄 Documentos',
-      items: [
-        {
-          id: 'documentos-lista',
-          label: 'Listado de documentos',
-          icon: DocumentIcon,
-          route: '/documentos',
-          active: currentRoute === '/documentos'
-        },
-        {
-          id: 'plantillas',
-          label: 'Plantillas y modelos (en desarrollo)',
-          icon: ClipboardDocumentListIcon,
-          route: '/plantillas',
-          active: currentRoute === '/plantillas'
-        }
-      ]
-    },
-    // PAGOS & REPORTES
-    {
-      category: '💰 Pagos & Reportes',
-      items: [
-        {
-          id: 'pagos-resumen',
-          label: 'Resumen de pagos (en desarrollo)',
-          icon: CurrencyDollarIcon,
-          route: '/pagos',
-          active: currentRoute === '/pagos'
-        },
-        {
-          id: 'detalle-caso',
-          label: 'Detalle caso/cliente (en desarrollo)',
-          icon: ChartBarIcon,
-          route: '/detalle',
-          active: currentRoute === '/detalle'
-        },
-        {
-          id: 'reportes',
-          label: 'Generacion de reportes (en desarrollo)',
-          icon: DocumentTextIcon,
-          route: '/reportes',
-          active: currentRoute === '/reportes'
-        },
-        {
-          id: 'negocios',
-          label: 'Negocios realizados (en desarrollo)',
-          icon: BuildingOfficeIcon,
-          route: '/negocios',
-          active: currentRoute === '/negocios'
-        },
-        {
-          id: 'correos',
-          label: 'Correos enviados (en desarrollo)',
-          icon: EnvelopeIcon,
-          route: '/correos',
-          active: currentRoute === '/correos'
-        }
-      ]
-    },
-    // USUARIOS
-    {
-      category: '👥 Usuarios',
-      items: [
-        {
-          id: 'usuarios-lista',
-          label: 'Lista de usuarios (en desarrollo)',
-          icon: UsersIcon,
-          route: '/usuarios',
-          active: currentRoute === '/usuarios'
-        },
-        {
-          id: 'usuarios-agregar',
-          label: 'Agregar usuario (en desarrollo)',
-          icon: PlusIcon,
-          route: '/usuarios/nuevo',
-          active: currentRoute === '/usuarios/nuevo'
-        }
-      ]
-    },
-    // SITIO WEB
-    {
-      category: '🌐 Sitio Web',
-      items: [
-        {
-          id: 'servicios',
-          label: 'Servicios (en desarrollo)',
-          icon: GlobeAltIcon,
-          route: '/servicios',
-          active: currentRoute === '/servicios'
-        },
-        {
-          id: 'contenidos',
-          label: 'Contenidos (en desarrollo)',
-          icon: DocumentTextIcon,
-          route: '/contenidos',
-          active: currentRoute === '/contenidos'
-        },
-        {
-          id: 'empresa',
-          label: 'Nuestra empresa (en desarrollo)',
-          icon: BuildingOfficeIcon,
-          route: '/empresa',
-          active: currentRoute === '/empresa'
-        },
-        {
-          id: 'privacidad',
-          label: 'Politicas de privacidad (en desarrollo)',
-          icon: LockClosedIcon,
-          route: '/privacidad',
-          active: currentRoute === '/privacidad'
-        }
-      ]
-    },
-    // CONFIGURACIÓN
-    {
-      category: '🛠️ Configuración',
-      items: [
-        {
-          id: 'info-empresa',
-          label: 'Informacion empresa (en desarrollo)',
-          icon: BuildingOfficeIcon,
-          route: '/config/empresa',
-          active: currentRoute === '/config/empresa'
-        },
-        {
-          id: 'dominio',
-          label: 'Dominio y pagina web (en desarrollo)',
-          icon: GlobeAltIcon,
-          route: '/config/dominio',
-          active: currentRoute === '/config/dominio'
-        },
-        {
-          id: 'plantillas-web',
-          label: 'Plantillas pagina web (en desarrollo)',
-          icon: DocumentIcon,
-          route: '/config/plantillas-web',
-          active: currentRoute === '/config/plantillas-web'
-        },
-        {
-          id: 'tipos-cliente',
-          label: 'Tipos de cliente (en desarrollo)',
-          icon: UserGroupIcon,
-          route: '/config/tipos-cliente',
-          active: currentRoute === '/config/tipos-cliente'
-        },
-        {
-          id: 'integraciones',
-          label: 'Integraciones (en desarrollo)',
-          icon: Cog6ToothIcon,
-          route: '/config/integraciones',
-          active: currentRoute === '/config/integraciones'
-        },
-        {
-          id: 'ajustes',
-          label: 'Ajustes generales (en desarrollo)',
-          icon: Cog6ToothIcon,
-          route: '/config/ajustes',
-          active: currentRoute === '/config/ajustes'
-        },
-        {
-          id: 'permisos',
-          label: 'Permisos (en desarrollo)',
-          icon: LockClosedIcon,
-          route: '/config/permisos',
-          active: currentRoute === '/config/permisos'
-        },
-        {
-          id: 'notificaciones',
-          label: 'Notificaciones (en desarrollo)',
-          icon: BellIcon,
-          route: '/config/notificaciones',
-          active: currentRoute === '/config/notificaciones'
-        }
-      ]
-    },
-    // MI CUENTA
-    {
-      category: '🧑 Mi cuenta',
-      items: [
-        {
-          id: 'perfil',
-          label: 'Modificar mi perfil (en desarrollo)',
-          icon: UserIcon,
-          route: '/cuenta/perfil',
-          active: currentRoute === '/cuenta/perfil'
-        },
-        {
-          id: 'password',
-          label: 'Cambiar contraseña (en desarrollo)',
-          icon: LockClosedIcon,
-          route: '/cuenta/password',
-          active: currentRoute === '/cuenta/password'
-        },
-        {
-          id: 'facturacion',
-          label: 'Facturacion (en desarrollo)',
-          icon: CreditCardIcon,
-          route: '/cuenta/facturacion',
-          active: currentRoute === '/cuenta/facturacion'
-        },
-        {
-          id: 'plan',
-          label: 'Mi plan (en desarrollo)',
-          icon: StarIcon,
-          route: '/cuenta/plan',
-          active: currentRoute === '/cuenta/plan'
-        }
-      ]
-    },
-    // FUTURAS
-    {
-      category: '🚀 Próximamente',
-      items: [
-        {
-          id: 'academia',
-          label: 'Academia Doctrack (futuro)',
-          icon: AcademicCapIcon,
-          route: '/academia',
-          active: currentRoute === '/academia'
-        },
-        {
-          id: 'comunidad',
-          label: 'Comunidad Doctrack (futuro)',
-          icon: ChatBubbleLeftRightIcon,
-          route: '/comunidad',
-          active: currentRoute === '/comunidad'
-        },
-        {
-          id: 'marketplace',
-          label: 'Marketplace (futuro)',
-          icon: ShoppingBagIcon,
-          route: '/marketplace',
-          active: currentRoute === '/marketplace'
-        },
-        {
-          id: 'soporte',
-          label: 'Soporte',
-          icon: QuestionMarkCircleIcon,
-          route: '/soporte',
-          active: currentRoute === '/soporte'
-        }
-      ]
-    }
-  ];
-
   // Renderizar contenido según ruta
   const renderContent = () => {
-    switch (currentRoute) {
-      case '/dashboard':
-        return <MainDashboardContent dashboardData={dashboardData} />;
-      default:
-        // Para todas las demás rutas, mostrar un contenido genérico
-        const currentItem = menuItems
-          .flatMap(category => category.items)
-          .find(item => item.route === currentRoute);
-        
-        return (
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              {currentItem?.label || 'Página'}
-            </h2>
-            <p className="text-gray-600">
-              {currentItem?.label?.includes('(en desarrollo)') || currentItem?.label?.includes('(futuro)') 
-                ? 'Esta funcionalidad está en desarrollo y estará disponible próximamente.'
-                : 'Contenido de la página en desarrollo...'}
-            </p>
-          </div>
-        );
+    if (currentRoute === '/dashboard') {
+      return <MainDashboardContent dashboardData={dashboardData} isLoading={isLoading} />;
     }
+    
+    const currentItem = menuConfig
+      .flatMap(category => category.items)
+      .find(item => item.route === currentRoute);
+    
+    return (
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">
+          {currentItem?.label || 'Página'}
+        </h2>
+        <p className="text-gray-600">
+          {currentItem?.label?.includes('(en desarrollo)') || currentItem?.label?.includes('(futuro)') 
+            ? 'Esta funcionalidad está en desarrollo y estará disponible próximamente.'
+            : 'Contenido de la página en desarrollo...'}
+        </p>
+      </div>
+    );
   };
 
-  if (!currentUser || isLoading) {
+  // Loading state
+  if (!currentUser) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -768,13 +509,12 @@ const Dashboard = () => {
   return (
     <div className="h-screen bg-gray-50 flex overflow-hidden">
       
-      {/* Sidebar con scroll */}
-      <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}>
+      {/* Sidebar con scroll mejorado */}
+      <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 flex flex-col`}>
         
         {/* Logo/Header */}
         <div className="flex items-center h-16 px-6 border-b border-gray-100 flex-shrink-0">
           <div className="flex items-center">
-            {/* CAMBIO 4: Usar una ruta relativa o absoluta para las imágenes */}
             <div className="w-6 h-6 mr-3 bg-blue-600 rounded flex items-center justify-center">
               <span className="text-white text-xs font-bold">D</span>
             </div>
@@ -788,32 +528,40 @@ const Dashboard = () => {
           </button>
         </div>
 
-        {/* Navigation con scroll */}
+        {/* User info header */}
+        <div className="px-6 py-4 border-b border-gray-100 flex-shrink-0">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+              <span className="text-blue-600 font-semibold text-sm">
+                {currentUser?.nombre?.charAt(0)}{currentUser?.apellido?.charAt(0)}
+              </span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {currentUser?.nombre} {currentUser?.apellido}
+              </p>
+              <p className="text-xs text-gray-500 truncate capitalize">{currentUser?.rol}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation con scroll optimizado */}
         <div className="flex-1 overflow-y-auto py-4">
           <nav className="px-4 space-y-6">
-            {menuItems.map((category, categoryIndex) => (
+            {menuConfig.map((category, categoryIndex) => (
               <div key={categoryIndex}>
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 mb-3">
                   {category.category}
                 </h3>
                 <div className="space-y-1">
-                  {category.items.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <button
-                        key={item.id}
-                        onClick={() => handleNavigation(item.route)}
-                        className={`w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
-                          item.active
-                            ? 'bg-gray-900 text-white'
-                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                        }`}
-                      >
-                        <Icon className={`w-5 h-5 mr-3 flex-shrink-0 ${item.active ? 'text-white' : 'text-gray-400'}`} />
-                        <span className="truncate">{item.label}</span>
-                      </button>
-                    );
-                  })}
+                  {category.items.map((item) => (
+                    <MenuItem
+                      key={item.id}
+                      item={item}
+                      isActive={currentRoute === item.route}
+                      onNavigate={handleNavigation}
+                    />
+                  ))}
                 </div>
               </div>
             ))}
@@ -837,12 +585,26 @@ const Dashboard = () => {
         
         {/* Top Header - solo el botón hamburguesa para mobile */}
         <header className="bg-white border-b border-gray-100 px-6 py-4 lg:hidden flex-shrink-0">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            <Bars3Icon className="w-6 h-6" />
-          </button>
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <Bars3Icon className="w-6 h-6" />
+            </button>
+            
+            {/* User info in mobile header */}
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                <span className="text-blue-600 font-semibold text-xs">
+                  {currentUser?.nombre?.charAt(0)}{currentUser?.apellido?.charAt(0)}
+                </span>
+              </div>
+              <span className="text-sm font-medium text-gray-900">
+                {currentUser?.nombre}
+              </span>
+            </div>
+          </div>
         </header>
 
         {/* Main Content Area */}

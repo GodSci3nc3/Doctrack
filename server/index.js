@@ -96,19 +96,18 @@ app.use(function(req, res, next) {
 
 // === ENDPOINTS ===
 
-// Health - CAMBIADO: sin /api
+// Health
 app.get('/health', function(_req, res) {
   res.json({ ok: true, service: 'Doctrack API', env: process.env.NODE_ENV || 'development' });
 });
 
-// LOGIN - CAMBIADO: sin /api
+// LOGIN
 app.post('/auth/login', async function(req, res) {
   console.log('--- LOGIN REQUEST START ---');
   try {
     console.log('Step 1: Parsing request body');
     const { email, password } = req.body || {};
     console.log('Step 2: Email provided:', email ? 'YES' : 'NO');
-    console.log('Step 3: Password provided:', password ? 'YES' : 'NO');
     
     if (!email || !password) {
       console.log('Step 4: Validation failed - missing credentials');
@@ -156,15 +155,11 @@ app.post('/auth/login', async function(req, res) {
     console.error('Full error:', err);
     return res.status(500).json({ message: 'Error en login', error: err.message });
   }
-  console.log('--- LOGIN REQUEST END ---');
 });
 
-// REGISTRO - CAMBIADO: sin /api
+// REGISTRO
 app.post('/auth/register', async function(req, res) {
   console.log('--- REGISTER REQUEST START ---');
-  console.log('Request body:', req.body);
-  console.log('Request headers:', req.headers);
-  
   try {
     const { nombre, apellido, email, password, rol } = req.body || {};
     
@@ -235,41 +230,77 @@ app.post('/auth/register', async function(req, res) {
   }
 });
 
-// LOGOUT - CAMBIADO: sin /api
+// LOGOUT
 app.post('/auth/logout', function(req, res) {
   clearAuthCookies(res);
   return res.json({ ok: true });
 });
 
-// === NUEVAS APIs PARA EL DASHBOARD ===
+// GET USER PROFILE - NUEVA API PARA EL HEADER
+app.get('/api/auth/profile', authRequired, async function(req, res) {
+  try {
+    const user = await prisma.usuariointerno.findUnique({
+      where: { usuario_id: req.user.sub },
+      select: {
+        usuario_id: true,
+        nombre: true,
+        apellido: true,
+        email: true,
+        rol: true,
+        created_at: true
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    return res.json({ user });
+  } catch (err) {
+    console.error('Error getting user profile:', err);
+    return res.status(500).json({ message: 'Error obteniendo perfil de usuario' });
+  }
+});
+
+// === NUEVAS APIs PARA EL DASHBOARD MEJORADAS ===
 
 // Dashboard Stats - Obtener estadísticas generales
 app.get('/api/dashboard/stats', authRequired, async function(req, res) {
   try {
     console.log('Getting dashboard stats...');
     
-    // Verificar conexión y estructura de tablas
     try {
-      // Intentar obtener el conteo de clientes de la tabla 'cliente'
-      const totalClientes = await prisma.cliente.count();
-      console.log('Total clientes found:', totalClientes);
-      
-      // Por ahora usar datos mock para casos hasta que tengamos la tabla correspondiente
-      const casosActivos = 45; 
-      const casosCompletados = 75; 
-      const documentosPendientes = 15; 
+      // Obtener estadísticas reales de la base de datos
+      const [totalClientes, totalCasos, casosActivos, documentosTotales] = await Promise.all([
+        prisma.cliente.count(),
+        prisma.caso.count(),
+        prisma.caso.count({ where: { estado: { in: ['PENDIENTE', 'EN_PROCESO'] } } }),
+        prisma.documento.count()
+      ]);
+
+      // Calcular casos completados
+      const casosCompletados = await prisma.caso.count({ 
+        where: { estado: 'COMPLETADO' } 
+      });
+
+      // Documentos pendientes (sin fecha de recibido)
+      const documentosPendientes = await prisma.documento.count({
+        where: { fecha_recibido: null }
+      });
 
       const stats = {
         clientes: totalClientes,
-        casosActivos,
-        casosCompletados,
-        documentosPendientes
+        casosActivos: casosActivos,
+        casosCompletados: casosCompletados,
+        documentosPendientes: documentosPendientes
       };
 
+      console.log('Real stats retrieved:', stats);
       return res.json(stats);
+      
     } catch (dbError) {
       console.error('Database error in stats:', dbError);
-      // Si hay error con la BD, devolver datos mock
+      // Si hay error con la BD, devolver datos mock mejorados
       const mockStats = {
         clientes: 120,
         casosActivos: 45,
@@ -285,24 +316,33 @@ app.get('/api/dashboard/stats', authRequired, async function(req, res) {
   }
 });
 
-// Obtener resumen de clientes
+// Obtener resumen de clientes MEJORADO
 app.get('/api/dashboard/clientes-resumen', authRequired, async function(req, res) {
   try {
     console.log('Getting clients summary...');
     
     try {
-      // Primero verificar qué campos existen en la tabla cliente
+      // Obtener clientes recientes con información real
       const clientes = await prisma.cliente.findMany({
         take: 10,
         orderBy: {
-          fecha_registro: 'desc'
+          created_at: 'desc'
+        },
+        select: {
+          cliente_id: true,
+          nombre: true,
+          apellido: true,
+          email: true,
+          telefono: true,
+          created_at: true,
+          canal_ingreso: true
         }
       });
 
-      console.log('Sample client data:', clientes[0]);
+      console.log('Real clients found:', clientes.length);
 
       const clientesFormateados = clientes.map(cliente => {
-        const fechaRegistro = cliente.fecha_registro ? new Date(cliente.fecha_registro) : new Date();
+        const fechaRegistro = cliente.created_at ? new Date(cliente.created_at) : new Date();
         const diasRegistro = Math.floor((new Date() - fechaRegistro) / (1000 * 60 * 60 * 24));
         
         return {
@@ -310,19 +350,21 @@ app.get('/api/dashboard/clientes-resumen', authRequired, async function(req, res
           nombre_completo: `${cliente.nombre || ''} ${cliente.apellido || ''}`.trim() || 'Sin nombre',
           email: cliente.email || 'Sin email',
           telefono: cliente.telefono || 'Sin teléfono',
-          dias_registro: diasRegistro || 0
+          dias_registro: diasRegistro || 0,
+          canal_ingreso: cliente.canal_ingreso || 'Directo'
         };
       });
 
       return res.json(clientesFormateados);
+      
     } catch (dbError) {
       console.error('Database error getting clients:', dbError);
-      // Devolver datos mock si hay error
+      // Datos mock mejorados si hay error
       const mockClientes = [
-        { cliente_id: 1, nombre_completo: 'María González', email: 'maria@email.com', dias_registro: 1 },
-        { cliente_id: 2, nombre_completo: 'Carlos Rivera', email: 'carlos@email.com', dias_registro: 2 },
-        { cliente_id: 3, nombre_completo: 'Ana Martínez', email: 'ana@email.com', dias_registro: 3 },
-        { cliente_id: 4, nombre_completo: 'José López', email: 'jose@email.com', dias_registro: 4 }
+        { cliente_id: 1, nombre_completo: 'María González', email: 'maria@email.com', dias_registro: 1, canal_ingreso: 'Web' },
+        { cliente_id: 2, nombre_completo: 'Carlos Rivera', email: 'carlos@email.com', dias_registro: 2, canal_ingreso: 'Referido' },
+        { cliente_id: 3, nombre_completo: 'Ana Martínez', email: 'ana@email.com', dias_registro: 3, canal_ingreso: 'Web' },
+        { cliente_id: 4, nombre_completo: 'José López', email: 'jose@email.com', dias_registro: 4, canal_ingreso: 'Teléfono' }
       ];
       return res.json(mockClientes);
     }
@@ -333,96 +375,249 @@ app.get('/api/dashboard/clientes-resumen', authRequired, async function(req, res
   }
 });
 
-// Obtener resumen de casos
+// Obtener resumen de casos MEJORADO
 app.get('/api/dashboard/casos-resumen', authRequired, async function(req, res) {
   try {
     console.log('Getting cases summary...');
     
-    // Por ahora usar datos mock hasta que tengamos la tabla de casos
-    // TODO: Implementar cuando tengamos la tabla de casos en la BD
-    const casosResumen = [
-      {
-        id: 1,
-        cliente: 'María González',
-        tipo: 'Residencia',
-        estado: 'En proceso',
-        fecha: '15/01/2025',
-        prioridad: 'media'
-      },
-      {
-        id: 2,
-        cliente: 'Carlos Rivera', 
-        tipo: 'Ciudadanía',
-        estado: 'Documentos',
-        fecha: '14/01/2025',
-        prioridad: 'alta'
-      },
-      {
-        id: 3,
-        cliente: 'Ana Martínez',
-        tipo: 'Visa trabajo',
-        estado: 'Revisión',
-        fecha: '13/01/2025',
-        prioridad: 'baja'
-      },
-      {
-        id: 4,
-        cliente: 'José López',
-        tipo: 'Reunificación',
-        estado: 'Aprobado',
-        fecha: '12/01/2025',
-        prioridad: 'completado'
-      }
-    ];
+    try {
+      // Obtener casos reales con información del cliente
+      const casos = await prisma.caso.findMany({
+        take: 10,
+        orderBy: {
+          created_at: 'desc'
+        },
+        include: {
+          cliente: {
+            select: {
+              nombre: true,
+              apellido: true
+            }
+          }
+        }
+      });
 
-    return res.json(casosResumen);
+      console.log('Real cases found:', casos.length);
+
+      const casosFormateados = casos.map(caso => ({
+        id: caso.caso_id,
+        cliente: `${caso.cliente.nombre} ${caso.cliente.apellido}`,
+        tipo: caso.tipo_tramite,
+        estado: caso.estado,
+        fecha: caso.fecha_creacion ? new Date(caso.fecha_creacion).toLocaleDateString('es-ES') : 'Sin fecha',
+        fecha_aprobacion: caso.fecha_aprobacion ? new Date(caso.fecha_aprobacion).toLocaleDateString('es-ES') : null
+      }));
+
+      return res.json(casosFormateados);
+      
+    } catch (dbError) {
+      console.error('Database error getting cases:', dbError);
+      // Datos mock si hay error
+      const casosMock = [
+        { id: 1, cliente: 'María González', tipo: 'Residencia', estado: 'PENDIENTE', fecha: '15/01/2025' },
+        { id: 2, cliente: 'Carlos Rivera', tipo: 'Ciudadanía', estado: 'EN_PROCESO', fecha: '14/01/2025' },
+        { id: 3, cliente: 'Ana Martínez', tipo: 'Visa trabajo', estado: 'PENDIENTE', fecha: '13/01/2025' },
+        { id: 4, cliente: 'José López', tipo: 'Reunificación', estado: 'COMPLETADO', fecha: '12/01/2025' }
+      ];
+      return res.json(casosMock);
+    }
+
   } catch (err) {
     console.error('Error getting cases summary:', err);
     return res.status(500).json({ message: 'Error obteniendo resumen de casos' });
   }
 });
 
-// Obtener checklist pendientes
+// Obtener checklist pendientes MEJORADO
 app.get('/api/dashboard/checklist-pendientes', authRequired, async function(req, res) {
   try {
     console.log('Getting pending checklist...');
     
-    // Mock data para checklist - TODO: Implementar con tabla real
-    const checklistPendientes = [
-      {
-        id: 1,
-        cliente: 'María González',
-        tarea: 'Revisar documentos de identidad',
-        fecha_limite: '2025-01-20',
-        prioridad: 'alta'
-      },
-      {
-        id: 2,
-        cliente: 'Carlos Rivera',
-        tarea: 'Completar formulario I-485',
-        fecha_limite: '2025-01-18',
-        prioridad: 'media'
-      },
-      {
-        id: 3,
-        cliente: 'Ana Martínez',
-        tarea: 'Agendar entrevista',
-        fecha_limite: '2025-01-25',
-        prioridad: 'baja'
-      }
-    ];
+    try {
+      // Obtener documentos pendientes como tareas del checklist
+      const documentosPendientes = await prisma.documento.findMany({
+        where: {
+          fecha_recibido: null // Documentos no recibidos
+        },
+        take: 10,
+        orderBy: {
+          created_at: 'desc'
+        },
+        include: {
+          caso: {
+            include: {
+              cliente: {
+                select: {
+                  nombre: true,
+                  apellido: true
+                }
+              }
+            }
+          }
+        }
+      });
 
-    return res.json(checklistPendientes);
+      console.log('Pending documents found:', documentosPendientes.length);
+
+      const checklistFormateado = documentosPendientes.map(doc => ({
+        id: doc.documento_id,
+        cliente: `${doc.caso.cliente.nombre} ${doc.caso.cliente.apellido}`,
+        tarea: `Recibir ${doc.tipo}`,
+        fecha_limite: doc.fecha_enviado ? 
+          new Date(new Date(doc.fecha_enviado).getTime() + (7 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0] : 
+          new Date(Date.now() + (7 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0],
+        prioridad: doc.fecha_enviado ? 
+          (new Date() - new Date(doc.fecha_enviado)) > (5 * 24 * 60 * 60 * 1000) ? 'alta' : 'media' : 
+          'baja',
+        tipo_documento: doc.tipo,
+        caso_id: doc.caso_id
+      }));
+
+      return res.json(checklistFormateado);
+      
+    } catch (dbError) {
+      console.error('Database error getting checklist:', dbError);
+      // Mock data si hay error
+      const mockChecklist = [
+        {
+          id: 1,
+          cliente: 'María González',
+          tarea: 'Revisar documentos de identidad',
+          fecha_limite: '2025-01-20',
+          prioridad: 'alta'
+        },
+        {
+          id: 2,
+          cliente: 'Carlos Rivera',
+          tarea: 'Completar formulario I-485',
+          fecha_limite: '2025-01-18',
+          prioridad: 'media'
+        },
+        {
+          id: 3,
+          cliente: 'Ana Martínez',
+          tarea: 'Agendar entrevista',
+          fecha_limite: '2025-01-25',
+          prioridad: 'baja'
+        }
+      ];
+      return res.json(mockChecklist);
+    }
+
   } catch (err) {
     console.error('Error getting pending checklist:', err);
     return res.status(500).json({ message: 'Error obteniendo checklist pendientes' });
   }
 });
 
+// NUEVAS APIs para completar funcionalidades
+
+// API para obtener lista completa de clientes
+app.get('/api/clientes', authRequired, async function(req, res) {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || '';
+    
+    const skip = (page - 1) * limit;
+    
+    const where = search ? {
+      OR: [
+        { nombre: { contains: search, mode: 'insensitive' } },
+        { apellido: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } }
+      ]
+    } : {};
+    
+    const [clientes, total] = await Promise.all([
+      prisma.cliente.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { created_at: 'desc' },
+        include: {
+          caso: {
+            select: {
+              caso_id: true,
+              estado: true,
+              tipo_tramite: true
+            }
+          }
+        }
+      }),
+      prisma.cliente.count({ where })
+    ]);
+
+    return res.json({
+      clientes,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (err) {
+    console.error('Error getting clients list:', err);
+    return res.status(500).json({ message: 'Error obteniendo lista de clientes' });
+  }
+});
+
+// API para obtener lista completa de casos
+app.get('/api/casos', authRequired, async function(req, res) {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const estado = req.query.estado || '';
+    
+    const skip = (page - 1) * limit;
+    
+    const where = estado ? { estado } : {};
+    
+    const [casos, total] = await Promise.all([
+      prisma.caso.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { created_at: 'desc' },
+        include: {
+          cliente: {
+            select: {
+              nombre: true,
+              apellido: true,
+              email: true
+            }
+          },
+          documento: {
+            select: {
+              documento_id: true,
+              tipo: true,
+              fecha_recibido: true
+            }
+          }
+        }
+      }),
+      prisma.caso.count({ where })
+    ]);
+
+    return res.json({
+      casos,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (err) {
+    console.error('Error getting cases list:', err);
+    return res.status(500).json({ message: 'Error obteniendo lista de casos' });
+  }
+});
+
 // Test endpoint para verificar estructura de tablas
 app.get('/api/debug/tables', authRequired, async function(req, res) {
   try {
-    // Verificar tablas disponibles
     const tableInfo = {};
     
     try {
@@ -439,9 +634,22 @@ app.get('/api/debug/tables', authRequired, async function(req, res) {
       tableInfo.cliente = `Error: ${err.message}`;
     }
 
+    try {
+      const sampleCaso = await prisma.caso.findFirst();
+      tableInfo.caso = sampleCaso ? Object.keys(sampleCaso) : 'No data';
+    } catch (err) {
+      tableInfo.caso = `Error: ${err.message}`;
+    }
+
     return res.json({ 
       message: 'Table structure info',
       tables: tableInfo,
+      counts: {
+        usuarios: await prisma.usuariointerno.count().catch(() => 0),
+        clientes: await prisma.cliente.count().catch(() => 0),
+        casos: await prisma.caso.count().catch(() => 0),
+        documentos: await prisma.documento.count().catch(() => 0)
+      },
       timestamp: new Date().toISOString()
     });
   } catch (err) {
@@ -457,7 +665,19 @@ app.all('*', function(req, res) {
     message: 'Route not found',
     method: req.method,
     url: req.url,
-    available_routes: ['/health', '/auth/login', '/auth/register', '/auth/logout', '/api/dashboard/stats'],
+    available_routes: [
+      '/health', 
+      '/auth/login', 
+      '/auth/register', 
+      '/auth/logout',
+      '/api/auth/profile',
+      '/api/dashboard/stats',
+      '/api/dashboard/clientes-resumen',
+      '/api/dashboard/casos-resumen',
+      '/api/dashboard/checklist-pendientes',
+      '/api/clientes',
+      '/api/casos'
+    ],
     timestamp: new Date().toISOString()
   });
 });
@@ -490,6 +710,13 @@ async function testDatabaseConnection() {
     
     const userCount = await prisma.usuariointerno.count();
     console.log(`✅ Found ${userCount} users in usuariointerno table`);
+    
+    const clientCount = await prisma.cliente.count();
+    console.log(`✅ Found ${clientCount} clients in cliente table`);
+    
+    const caseCount = await prisma.caso.count().catch(() => 0);
+    console.log(`✅ Found ${caseCount} cases in caso table`);
+    
   } catch (error) {
     console.error('❌ Database connection failed:', error.message);
   }
