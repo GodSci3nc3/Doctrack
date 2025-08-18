@@ -245,15 +245,28 @@ console.log('================================');
 async function testDatabaseConnection() {
   try {
     console.log('Testing database connection...');
+    console.log('Prisma client version:', prisma._clientVersion || 'Unknown');
+    console.log('Attempting to connect to database...');
+    
     await prisma.$connect();
     console.log('✅ Database connection successful');
     
     // Test if we can query the usuariointerno table
+    console.log('Testing table access...');
     const userCount = await prisma.usuariointerno.count();
     console.log(`✅ Found ${userCount} users in usuariointerno table`);
   } catch (error) {
     console.error('❌ Database connection failed:', error.message);
+    console.error('Error code:', error.code);
+    console.error('Error name:', error.name);
     console.error('Full database error:', error);
+    
+    // Additional debugging for Prisma client errors
+    if (error.name === 'PrismaClientInitializationError') {
+      console.error('This appears to be a Prisma client initialization error.');
+      console.error('The Prisma client may have been generated with a different schema.');
+      console.error('Try regenerating the client with: npx prisma generate');
+    }
   }
 }
 
