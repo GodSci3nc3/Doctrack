@@ -23,7 +23,6 @@ import {
   BuildingOfficeIcon,
   EyeIcon,
   DocumentDuplicateIcon,
-  RobotIcon,
   ClipboardDocumentListIcon,
   EnvelopeIcon,
   LockClosedIcon,
@@ -33,6 +32,15 @@ import {
 } from '@heroicons/react/24/outline';
 
 import { useLocation, useNavigate } from 'react-router-dom';
+
+// CAMBIO 1: Mover RobotIcon fuera del import principal para evitar conflictos
+// Si no tienes este ícono, usa uno alternativo
+const RobotIcon = ({ className }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+          d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2z" />
+  </svg>
+);
 
 // Componente de contenido principal del Dashboard
 const MainDashboardContent = ({ dashboardData }) => (
@@ -65,7 +73,7 @@ const MainDashboardContent = ({ dashboardData }) => (
     </div>
 
     {/* Cards principales */}
-    <div className="grid grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
         <div className="flex items-center justify-between mb-4">
           <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -117,8 +125,8 @@ const MainDashboardContent = ({ dashboardData }) => (
       </div>
     </div>
 
-    {/* Secciones inferiores */}
-    <div className="grid grid-cols-2 gap-6">
+    {/* Secciones inferiores - Responsive */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Resumen de Clientes */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
         <div className="flex items-center justify-between mb-6">
@@ -300,11 +308,14 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // CAMBIO 2: Agregar variable de entorno con fallback
+  const API_URL = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+
   // Logout function
   const handleLogout = async () => {
     try {
       // Llamar a la API de logout
-      await fetch(`${import.meta.env.VITE_API_URL}/auth/logout`, {
+      await fetch(`${API_URL}/auth/logout`, {
         method: 'POST',
         credentials: 'include'
       });
@@ -327,10 +338,10 @@ const Dashboard = () => {
   const loadDashboardData = async () => {
     try {
       const [statsRes, clientesRes, casosRes, checklistRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_URL}/api/dashboard/stats`, { credentials: 'include' }),
-        fetch(`${import.meta.env.VITE_API_URL}/api/dashboard/clientes-resumen`, { credentials: 'include' }),
-        fetch(`${import.meta.env.VITE_API_URL}/api/dashboard/casos-resumen`, { credentials: 'include' }),
-        fetch(`${import.meta.env.VITE_API_URL}/api/dashboard/checklist-pendientes`, { credentials: 'include' })
+        fetch(`${API_URL}/api/dashboard/stats`, { credentials: 'include' }),
+        fetch(`${API_URL}/api/dashboard/clientes-resumen`, { credentials: 'include' }),
+        fetch(`${API_URL}/api/dashboard/casos-resumen`, { credentials: 'include' }),
+        fetch(`${API_URL}/api/dashboard/checklist-pendientes`, { credentials: 'include' })
       ]);
 
       if (statsRes.ok) {
@@ -437,7 +448,7 @@ const Dashboard = () => {
         {
           id: 'casos-ia',
           label: 'Revision IA (en desarrollo)',
-          icon: RobotIcon,
+          icon: RobotIcon, // CAMBIO 3: Usar el componente RobotIcon personalizado
           route: '/casos/ia',
           active: currentRoute === '/casos/ia'
         }
@@ -763,11 +774,10 @@ const Dashboard = () => {
         {/* Logo/Header */}
         <div className="flex items-center h-16 px-6 border-b border-gray-100 flex-shrink-0">
           <div className="flex items-center">
-            <img 
-              src="/src/assets/doctrackIcon.png" 
-              alt="Doctrack Logo" 
-              className="w-6 h-6 mr-3"
-            />
+            {/* CAMBIO 4: Usar una ruta relativa o absoluta para las imágenes */}
+            <div className="w-6 h-6 mr-3 bg-blue-600 rounded flex items-center justify-center">
+              <span className="text-white text-xs font-bold">D</span>
+            </div>
             <span className="text-xl font-semibold text-gray-900">Doctrack</span>
           </div>
           <button

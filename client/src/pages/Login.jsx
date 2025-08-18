@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; // Añadir esta importación
+import { useNavigate } from 'react-router-dom';
 import { EyeIcon, EyeSlashIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 
-const Login = () => { // Remover la prop onSwitchToRegister
-  const navigate = useNavigate(); // Añadir este hook
+const Login = () => {
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     email: '',
@@ -14,6 +14,9 @@ const Login = () => { // Remover la prop onSwitchToRegister
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
 
+  // CAMBIO 1: Agregar variable de entorno con fallback
+  const API_URL = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+
   // Limpiar errores cuando el usuario empiece a escribir
   useEffect(() => {
     if (Object.keys(errors).length > 0) {
@@ -22,7 +25,7 @@ const Login = () => { // Remover la prop onSwitchToRegister
     if (loginError) {
       setLoginError('');
     }
-  }, [formData]);
+  }, [formData.email, formData.password]); // CAMBIO 2: Ser más específico con las dependencias
 
   // Validación del formulario
   const validateForm = () => {
@@ -67,7 +70,7 @@ const Login = () => { // Remover la prop onSwitchToRegister
     setLoginError('');
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -82,17 +85,22 @@ const Login = () => { // Remover la prop onSwitchToRegister
       if (response.ok) {
         const data = await response.json();
         
+        // CAMBIO 3: Almacenar token y datos de usuario si están disponibles
+        if (data.token) {
+          localStorage.setItem('authToken', data.token);
+        }
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+        }
+        
         // Disparar evento de cambio de autenticación
         window.dispatchEvent(new Event('authChange'));
         
-        // Mostrar mensaje de éxito
-        alert('Login exitoso! Redirigiendo al dashboard...');
-        
-        // Aquí puedes redirigir al dashboard si tienes react-router
-        // navigate('/dashboard');
+        // Redirigir al dashboard
+        navigate('/dashboard');
         
       } else {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({ message: 'Error en el servidor' }));
         setLoginError(errorData.message || 'Credenciales incorrectas');
       }
     } catch (error) {
@@ -117,18 +125,17 @@ const Login = () => { // Remover la prop onSwitchToRegister
           {/* Logo y encabezado */}
           <div className="text-center mb-12">
             <div className="flex items-center justify-center mb-4">
-              <img 
-                src="/src/assets/doctrackIcon.png" 
-                alt="Doctrack Logo" 
-                className="w-8 h-8 mr-3"
-              />
+              {/* CAMBIO 4: Reemplazar imagen con ícono simple */}
+              <div className="w-8 h-8 mr-3 bg-blue-600 rounded flex items-center justify-center">
+                <span className="text-white text-sm font-bold">D</span>
+              </div>
               <h1 className="text-3xl font-normal text-gray-900">Doctrack</h1>
             </div>
             <p className="text-gray-500 text-lg font-light">Inicia sesión</p>
           </div>
 
           {/* Formulario */}
-          <div className="space-y-8">
+          <form onSubmit={handleSubmit} className="space-y-8">
             
             {/* Campo Email */}
             <div>
@@ -143,10 +150,11 @@ const Login = () => { // Remover la prop onSwitchToRegister
                 onChange={handleInputChange}
                 className="w-full px-4 py-4 text-lg border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
                 placeholder="Ingresa tu correo electrónico"
+                autoComplete="email" // CAMBIO 5: Agregar autoComplete para mejor UX
               />
               {errors.email && (
                 <div className="mt-3 flex items-center text-base text-red-600">
-                  <ExclamationCircleIcon className="w-5 h-5 mr-2" />
+                  <ExclamationCircleIcon className="w-5 h-5 mr-2 flex-shrink-0" />
                   {errors.email}
                 </div>
               )}
@@ -166,6 +174,7 @@ const Login = () => { // Remover la prop onSwitchToRegister
                   onChange={handleInputChange}
                   className="w-full px-4 py-4 pr-12 text-lg border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
                   placeholder="Ingresa tu contraseña"
+                  autoComplete="current-password" // CAMBIO 6: Agregar autoComplete
                 />
                 <button
                   type="button"
@@ -181,7 +190,7 @@ const Login = () => { // Remover la prop onSwitchToRegister
               </div>
               {errors.password && (
                 <div className="mt-3 flex items-center text-base text-red-600">
-                  <ExclamationCircleIcon className="w-5 h-5 mr-2" />
+                  <ExclamationCircleIcon className="w-5 h-5 mr-2 flex-shrink-0" />
                   {errors.password}
                 </div>
               )}
@@ -191,7 +200,7 @@ const Login = () => { // Remover la prop onSwitchToRegister
             {loginError && (
               <div className="bg-red-50 border border-red-200 rounded-md p-4">
                 <div className="flex items-center text-base text-red-700">
-                  <ExclamationCircleIcon className="w-5 h-5 mr-3" />
+                  <ExclamationCircleIcon className="w-5 h-5 mr-3 flex-shrink-0" />
                   {loginError}
                 </div>
               </div>
@@ -199,7 +208,7 @@ const Login = () => { // Remover la prop onSwitchToRegister
 
             {/* Botón de acceder */}
             <button
-              onClick={handleSubmit}
+              type="submit"
               disabled={isLoading}
               className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white font-medium py-4 px-6 rounded-md transition-all duration-200 text-lg disabled:cursor-not-allowed"
             >
@@ -213,13 +222,13 @@ const Login = () => { // Remover la prop onSwitchToRegister
               )}
             </button>
 
-          </div>
+          </form>
 
           {/* Enlace para crear cuenta */}
           <div className="mt-8 text-center">
             <span className="text-gray-500 text-base">¿Eres nuevo? </span>
             <button 
-              onClick={handleSwitchToRegister} // Cambiar esto
+              onClick={handleSwitchToRegister}
               className="text-purple-600 hover:text-purple-700 font-medium text-base"
             >
               Crea tu cuenta aquí
