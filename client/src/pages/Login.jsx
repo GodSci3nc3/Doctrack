@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EyeIcon, EyeSlashIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
-import {DoctrackIcon} from '../assets/doctrackIcon.png'; // CAMBIO 3: Importar ícono de Doctrack
+import DoctrackIcon from '../assets/doctrackIcon.png'; // CAMBIO 3: Importar ícono de Doctrack
 
 const Login = () => {
   const navigate = useNavigate();
