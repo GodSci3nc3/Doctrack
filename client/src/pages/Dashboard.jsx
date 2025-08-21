@@ -318,18 +318,7 @@ const Dashboard = () => {
     if (currentRoute === '/dashboard') {
       return <DashboardContent dashboardData={dashboardData} isLoading={isLoading} />;
     }
-    
-    // Para otras rutas, mostrar contenido genérico
-    return (
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
-          {currentRoute.replace('/', '').replace('-', ' ').toUpperCase()}
-        </h2>
-        <p className="text-gray-600">
-          Esta funcionalidad está en desarrollo y estará disponible próximamente.
-        </p>
-      </div>
-    );
+
   };
 
   return (
