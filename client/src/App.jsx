@@ -1,80 +1,82 @@
-import React, { useState, useEffect } from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import ProtectedRoute from './components/ProtectedRoute';
+import MainLayout from './components/Layouts/MainLayout';
 import Login from './pages/Login';
-import Register from './pages/Register'; // Añadir esta importación
-import Dashboard from './pages/Dashboard';
-import Clients from './pages/Clients';
-import Cases from './pages/Cases';
+import Register from './pages/Register';
+
+// Lazy loading de páginas
+const Dashboard = React.lazy(() => import('./pages/Dashboard'));
+const ClientsPage = React.lazy(() => import('./pages/Clients'));
+const CasesPage = React.lazy(() => import('./pages/Cases'));
+const NotFoundPage = React.lazy(() => import('./pages/NotFoundPage'));
+
+// Componente de Loading para Suspense
+const PageLoader = () => (
+  <div className="flex items-center justify-center p-12">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+      <p className="text-gray-600">Cargando página...</p>
+    </div>
+  </div>
+);
 
 const App = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    // Check authentication status on app load
-    const checkAuth = () => {
-      const token = localStorage.getItem('authToken');
-      setIsLoggedIn(!!token);
-      setIsLoading(false);
-    };
-
-    checkAuth();
-
-    // Listen for storage changes (when user logs in/out in another tab)
-    const handleStorageChange = () => {
-      checkAuth();
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    
-    // Custom event listener for when login happens in the same tab
-    const handleAuthChange = () => {
-      checkAuth();
-    };
-    
-    window.addEventListener('authChange', handleAuthChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('authChange', handleAuthChange);
-    };
-  }, []);
-
-  // Show loading spinner while checking authentication
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
   return (
     <Router>
       <Routes>
+        {/* Rutas públicas */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        
+        {/* Rutas protegidas con layout */}
         <Route 
-          path="/login" 
-          element={isLoggedIn ? <Navigate to="/dashboard" /> : <Login />} 
-        />
-        <Route 
-          path="/register" 
-          element={isLoggedIn ? <Navigate to="/dashboard" /> : <Register />} 
-        />
-        <Route
-          path="/dashboard"
-          element={isLoggedIn ? <Dashboard /> : <Navigate to="/login" />}
-        />
-        <Route
-          path="/clients"
-          element={isLoggedIn ? <Clients /> : <Navigate to="/login" />}
-        />
-        <Route
-          path="/cases"
-          element={isLoggedIn ? <Cases /> : <Navigate to="/login" />}
-        />
-        <Route 
-          path="*" 
-          element={<Navigate to={isLoggedIn ? "/dashboard" : "/login"} />} 
+          path="/*" 
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
+                    {/* Ruta principal */}
+                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                    
+                    {/* Dashboard */}
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    
+                    {/* Clientes */}
+                    <Route path="/clients" element={<ClientsPage />} />
+                    
+                    {/* Casos */}
+                    <Route path="/cases" element={<CasesPage />} />
+                    
+                    {/* Documentos */}
+                    {/*<Route path="/documentos" element={<DocumentsPage />} />*/}
+                    
+                    {/* Páginas futuras - placeholder routes */}
+                    <Route path="/agenda" element={<div className="p-6"><h2 className="text-2xl font-bold text-gray-900">Agenda - En desarrollo</h2></div>} />
+                    <Route path="/casos/tracking" element={<div className="p-6"><h2 className="text-2xl font-bold text-gray-900">Case Tracking - En desarrollo</h2></div>} />
+                    <Route path="/casos/ia" element={<div className="p-6"><h2 className="text-2xl font-bold text-gray-900">Revisión IA - En desarrollo</h2></div>} />
+                    <Route path="/contratos" element={<div className="p-6"><h2 className="text-2xl font-bold text-gray-900">Contratos - En desarrollo</h2></div>} />
+                    <Route path="/plantillas" element={<div className="p-6"><h2 className="text-2xl font-bold text-gray-900">Plantillas - En desarrollo</h2></div>} />
+                    <Route path="/pagos" element={<div className="p-6"><h2 className="text-2xl font-bold text-gray-900">Pagos - En desarrollo</h2></div>} />
+                    <Route path="/reportes" element={<div className="p-6"><h2 className="text-2xl font-bold text-gray-900">Reportes - En desarrollo</h2></div>} />
+                    <Route path="/usuarios" element={<div className="p-6"><h2 className="text-2xl font-bold text-gray-900">Usuarios - En desarrollo</h2></div>} />
+                    <Route path="/usuarios/nuevo" element={<div className="p-6"><h2 className="text-2xl font-bold text-gray-900">Nuevo Usuario - En desarrollo</h2></div>} />
+                    <Route path="/servicios" element={<div className="p-6"><h2 className="text-2xl font-bold text-gray-900">Servicios - En desarrollo</h2></div>} />
+                    <Route path="/config/*" element={<div className="p-6"><h2 className="text-2xl font-bold text-gray-900">Configuración - En desarrollo</h2></div>} />
+                    <Route path="/cuenta/*" element={<div className="p-6"><h2 className="text-2xl font-bold text-gray-900">Mi Cuenta - En desarrollo</h2></div>} />
+                    <Route path="/academia" element={<div className="p-6"><h2 className="text-2xl font-bold text-gray-900">Academia - Próximamente</h2></div>} />
+                    <Route path="/comunidad" element={<div className="p-6"><h2 className="text-2xl font-bold text-gray-900">Comunidad - Próximamente</h2></div>} />
+                    <Route path="/marketplace" element={<div className="p-6"><h2 className="text-2xl font-bold text-gray-900">Marketplace - Próximamente</h2></div>} />
+                    <Route path="/soporte" element={<div className="p-6"><h2 className="text-2xl font-bold text-gray-900">Soporte</h2></div>} />
+                    
+                    {/* 404 */}
+                    <Route path="*" element={<NotFoundPage />} />
+                  </Routes>
+                </Suspense>
+              </MainLayout>
+            </ProtectedRoute>
+          } 
         />
       </Routes>
     </Router>

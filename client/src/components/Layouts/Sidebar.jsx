@@ -1,4 +1,5 @@
 import React from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { 
   UserGroupIcon, 
   DocumentTextIcon, 
@@ -29,8 +30,6 @@ import {
   CreditCardIcon,
   StarIcon
 } from '@heroicons/react/24/outline';
-
-
 
 // Componente de ícono personalizado para IA
 const RobotIcon = ({ className }) => (
@@ -132,21 +131,28 @@ export const menuConfig = [
   }
 ];
 
-// Componente para los elementos de menú
-const MenuItem = ({ item, isActive, onNavigate }) => {
+// Componente para los elementos de menú usando NavLink
+const MenuItem = ({ item }) => {
   const Icon = item.icon;
+  
   return (
-    <button
-      onClick={() => onNavigate(item.route)}
-      className={`w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
-        isActive
-          ? 'bg-gray-900 text-white'
-          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-      }`}
+    <NavLink
+      to={item.route}
+      className={({ isActive }) => 
+        `w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+          isActive
+            ? 'bg-gray-900 text-white'
+            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+        }`
+      }
     >
-      <Icon className={`w-5 h-5 mr-3 flex-shrink-0 ${isActive ? 'text-white' : 'text-gray-400'}`} />
-      <span className="truncate">{item.label}</span>
-    </button>
+      {({ isActive }) => (
+        <>
+          <Icon className={`w-5 h-5 mr-3 flex-shrink-0 ${isActive ? 'text-white' : 'text-gray-400'}`} />
+          <span className="truncate">{item.label}</span>
+        </>
+      )}
+    </NavLink>
   );
 };
 
@@ -154,18 +160,18 @@ const MenuItem = ({ item, isActive, onNavigate }) => {
 const Sidebar = ({ 
   isOpen, 
   onClose, 
-  currentRoute, 
-  onNavigate, 
   currentUser, 
   onLogout 
 }) => {
+  const navigate = useNavigate();
+  
   const API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost' 
-    ? 'http://localhost:3000' 
+    ? 'http://localhost:3001' 
     : 'https://doctrack-0jp0.onrender.com';
 
   const handleLogout = async () => {
     try {
-      await fetch(`${API_URL}/auth/logout`, {
+      await fetch(`${API_URL}/api/auth/logout`, {
         method: 'POST',
         credentials: 'include'
       });
@@ -179,10 +185,9 @@ const Sidebar = ({
     
     if (onLogout) {
       onLogout();
-    } else if (typeof window !== 'undefined') {
-      const { navigate } = require('react-router-dom');
-      navigate('/login');
     }
+    
+    navigate('/login');
   };
 
   return (
@@ -191,7 +196,7 @@ const Sidebar = ({
       {/* Logo/Header */}
       <div className="flex items-center h-16 px-6 border-b border-gray-100 flex-shrink-0">
         <div className="flex items-center">
-          <div className="flex items-center justify-center">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
             <span className="text-white text-xs font-bold">D</span>
           </div>
           <span className="text-xl font-semibold text-gray-900">Doctrack</span>
@@ -236,8 +241,6 @@ const Sidebar = ({
                   <MenuItem
                     key={item.id}
                     item={item}
-                    isActive={currentRoute === item.route}
-                    onNavigate={onNavigate}
                   />
                 ))}
               </div>

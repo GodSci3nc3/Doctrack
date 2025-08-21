@@ -1,135 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { Outlet } from 'react-router-dom';
 import { Bars3Icon } from '@heroicons/react/24/outline';
-import Sidebar from './Sidebar'; // Ajusta la ruta según tu estructura
+import Sidebar from './Sidebar';
+import { useAuth } from '../ProtectedRoute';
 
-// Hook personalizado para manejar la autenticación
-const useAuth = () => {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost' 
-    ? 'http://localhost:3000' 
-    : 'https://doctrack-0jp0.onrender.com';
-
-  useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const token = localStorage.getItem('authToken');
-        const userData = localStorage.getItem('user');
-
-        if (!token) {
-          setIsLoading(false);
-          return;
-        }
-
-        if (userData) {
-          try {
-            const user = JSON.parse(userData);
-            setCurrentUser(user);
-          } catch (error) {
-            console.error('Error parsing user data:', error);
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('user');
-          }
-        }
-
-        // Opcionalmente, verificar el token con el servidor
-        try {
-          const response = await fetch(`${API_URL}/api/auth/profile`, {
-            credentials: 'include'
-          });
-
-          if (response.ok) {
-            const { user } = await response.json();
-            setCurrentUser(user);
-            localStorage.setItem('user', JSON.stringify(user));
-          } else {
-            // Token inválido
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('user');
-            setCurrentUser(null);
-          }
-        } catch (error) {
-          console.error('Error verifying token:', error);
-        }
-
-      } catch (error) {
-        console.error('Error loading user data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadUserData();
-
-    // Escuchar cambios en la autenticación
-    const handleAuthChange = () => {
-      loadUserData();
-    };
-
-    window.addEventListener('authChange', handleAuthChange);
-    return () => window.removeEventListener('authChange', handleAuthChange);
-  }, []);
-
-  const logout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
-    setCurrentUser(null);
-    window.dispatchEvent(new Event('authChange'));
-    
-    if (typeof window !== 'undefined') {
-      window.location.href = '/login';
-    }
-  };
-
-  return { currentUser, isLoading, logout };
-};
-
-// Componente de Layout Principal
-const MainLayout = ({ 
-  children, 
-  title = "Dashboard",
-  currentRoute = "/dashboard",
-  onNavigate,
-  showMobileHeader = true,
-  className = ""
-}) => {
+// Componente de Layout Principal con React Router
+const MainLayout = ({ children, showMobileHeader = true, className = "" }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { currentUser, isLoading, logout } = useAuth();
-
-  // Función de navegación por defecto
-  const handleNavigation = (route) => {
-    setSidebarOpen(false);
-    
-    if (onNavigate) {
-      onNavigate(route);
-    } else {
-      // Navegación por defecto usando window.location
-      if (typeof window !== 'undefined') {
-        window.location.href = route;
-      }
-    }
-  };
-
-  // Mostrar loading mientras se carga el usuario
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Redirigir si no hay usuario autenticado
-  if (!currentUser) {
-    if (typeof window !== 'undefined') {
-      window.location.href = '/login';
-    }
-    return null;
-  }
+  const { currentUser, logout } = useAuth();
 
   return (
     <div className="h-screen bg-gray-50 flex overflow-hidden">
@@ -138,8 +16,6 @@ const MainLayout = ({
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        currentRoute={currentRoute}
-        onNavigate={handleNavigation}
         currentUser={currentUser}
         onLogout={logout}
       />
@@ -176,12 +52,10 @@ const MainLayout = ({
         {/* Main Content Area */}
         <main className={`flex-1 overflow-y-auto p-6 ${className}`}>
           <div className="max-w-7xl mx-auto">
-            {title && (
-              <div className="mb-6">
-                <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-              </div>
-            )}
+            {/* Si se pasan children directamente, los renderizamos */}
             {children}
+            {/* Si no hay children, renderizamos el Outlet para las rutas */}
+            {!children && <Outlet />}
           </div>
         </main>
       </div>

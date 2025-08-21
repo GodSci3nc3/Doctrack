@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   UserGroupIcon, 
   DocumentIcon,
   BriefcaseIcon,
   PlusIcon
 } from '@heroicons/react/24/outline';
-import MainLayout from '../components/Layouts/MainLayout';
 
 // Hook personalizado para la gestión de datos del dashboard
 const useDashboardData = () => {
@@ -13,7 +13,7 @@ const useDashboardData = () => {
   const [isLoading, setIsLoading] = useState(true);
   
   const API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost' 
-    ? 'http://localhost:3000' 
+    ? 'http://localhost:3001' 
     : 'https://doctrack-0jp0.onrender.com';
 
   const loadDashboardData = async () => {
@@ -110,6 +110,8 @@ const StatsCards = ({ dashboardData }) => {
 
 // Componente para el resumen de clientes
 const ClientesSummary = ({ clientes }) => {
+  const navigate = useNavigate();
+  
   const defaultClientes = [
     { nombre_completo: 'María González', dias_registro: 1 },
     { nombre_completo: 'Carlos Rivera', dias_registro: 2 },
@@ -121,7 +123,10 @@ const ClientesSummary = ({ clientes }) => {
     <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-gray-900">Resumen de Clientes</h3>
-        <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+        <button 
+          onClick={() => navigate('/clients')}
+          className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+        >
           Ver todos los clientes
         </button>
       </div>
@@ -144,6 +149,8 @@ const ClientesSummary = ({ clientes }) => {
 
 // Componente para el resumen de casos
 const CasosSummary = ({ casos }) => {
+  const navigate = useNavigate();
+  
   const defaultCases = [
     { cliente: 'María González', estado: 'En proceso', fecha: '15/01/2025' },
     { cliente: 'Carlos Rivera', estado: 'Documentos', fecha: '14/01/2025' },
@@ -168,7 +175,10 @@ const CasosSummary = ({ casos }) => {
     <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-gray-900">Resumen de Casos</h3>
-        <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+        <button 
+          onClick={() => navigate('/cases')}
+          className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+        >
           Ver todos los casos
         </button>
       </div>
@@ -240,8 +250,16 @@ const ChecklistPendientes = ({ checklist }) => {
   );
 };
 
-// Componente principal del contenido del Dashboard
-const DashboardContent = ({ dashboardData, isLoading }) => {
+// Componente principal del Dashboard (sin MainLayout, ya que se maneja por el router)
+const Dashboard = () => {
+  const { dashboardData, isLoading, loadDashboardData } = useDashboardData();
+  const navigate = useNavigate();
+
+  // Cargar datos al montar el componente
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-12">
@@ -255,6 +273,11 @@ const DashboardContent = ({ dashboardData, isLoading }) => {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+      </div>
+
       {/* Header con botones */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
@@ -271,11 +294,17 @@ const DashboardContent = ({ dashboardData, isLoading }) => {
         </div>
         
         <div className="flex items-center space-x-3">
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 text-sm font-medium">
+          <button 
+            onClick={() => navigate('/clientes/nuevo')}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 text-sm font-medium"
+          >
             <PlusIcon className="w-4 h-4" />
             <span>New Client</span>
           </button>
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 text-sm font-medium">
+          <button 
+            onClick={() => navigate('/casos/nuevo')}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 text-sm font-medium"
+          >
             <PlusIcon className="w-4 h-4" />
             <span>New Case</span>
           </button>
@@ -294,41 +323,6 @@ const DashboardContent = ({ dashboardData, isLoading }) => {
       {/* Checklist Pendientes */}
       <ChecklistPendientes checklist={dashboardData?.checklistPendientes} />
     </div>
-  );
-};
-
-// Componente principal del Dashboard
-const Dashboard = () => {
-  const [currentRoute, setCurrentRoute] = useState('/dashboard');
-  const { dashboardData, isLoading, loadDashboardData } = useDashboardData();
-
-  // Función de navegación
-  const handleNavigation = (route) => {
-    setCurrentRoute(route);
-    // Aquí puedes agregar lógica adicional de navegación si usas React Router
-  };
-
-  // Cargar datos al montar el componente
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  // Renderizar contenido según ruta
-  const renderContent = () => {
-    if (currentRoute === '/dashboard') {
-      return <DashboardContent dashboardData={dashboardData} isLoading={isLoading} />;
-    }
-
-  };
-
-  return (
-    <MainLayout
-      title="Dashboard"
-      currentRoute={currentRoute}
-      onNavigate={handleNavigation}
-    >
-      {renderContent()}
-    </MainLayout>
   );
 };
 
