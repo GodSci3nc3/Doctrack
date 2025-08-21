@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EyeIcon, EyeSlashIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
+import {DoctrackIcon} from '../assets/doctrackIcon.png'; // CAMBIO 3: Importar ícono de Doctrack
 
 const Login = () => {
   const navigate = useNavigate();
@@ -125,8 +126,8 @@ const Login = () => {
           {/* Logo y encabezado */}
           <div className="text-center mb-12">
             <div className="flex items-center justify-center mb-4">
-              {/* CAMBIO 4: Reemplazar imagen con ícono simple */}
-              <div className="w-8 h-8 mr-3 bg-blue-600 rounded flex items-center justify-center">
+                <img src={DoctrackIcon} className="w-8 h-8 mr-3 rounded flex items-center justify-center" />
+              <div className="flex items-center justify-center">
                 <span className="text-white text-sm font-bold">D</span>
               </div>
               <h1 className="text-3xl font-normal text-gray-900">Doctrack</h1>

@@ -5,7 +5,7 @@ import {
   BriefcaseIcon,
   PlusIcon
 } from '@heroicons/react/24/outline';
-import MainLayout from '../components/Layouts/MainLayout'; // Ajusta la ruta según tu estructura
+import MainLayout from '../components/Layouts/MainLayout';
 
 // Hook personalizado para la gestión de datos del dashboard
 const useDashboardData = () => {

@@ -30,6 +30,8 @@ import {
   StarIcon
 } from '@heroicons/react/24/outline';
 
+
+
 // Componente de ícono personalizado para IA
 const RobotIcon = ({ className }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -50,7 +52,7 @@ export const menuConfig = [
   {
     category: '📁 Casos Migratorios',
     items: [
-      { id: 'casos-lista', label: 'Lista de casos', icon: BriefcaseIcon, route: '/casos' },
+      { id: 'casos-lista', label: 'Lista de casos', icon: BriefcaseIcon, route: '/cases' },
       { id: 'casos-nuevo', label: 'Nuevo Caso', icon: PlusIcon, route: '/casos/nuevo' },
       { id: 'casos-tracking', label: 'Case tracking (en desarrollo)', icon: EyeIcon, route: '/casos/tracking' },
       { id: 'casos-ia', label: 'Revision IA (en desarrollo)', icon: RobotIcon, route: '/casos/ia' }
@@ -59,7 +61,7 @@ export const menuConfig = [
   {
     category: '👤 Clientes',
     items: [
-      { id: 'clientes-lista', label: 'Lista de clientes', icon: UserGroupIcon, route: '/clientes' },
+      { id: 'clientes-lista', label: 'Lista de clientes', icon: UserGroupIcon, route: '/clients' },
       { id: 'clientes-nuevo', label: 'Nuevo Cliente', icon: PlusIcon, route: '/clientes/nuevo' },
       { id: 'contratos', label: 'Contratos (en desarrollo)', icon: DocumentDuplicateIcon, route: '/contratos' }
     ]
@@ -178,7 +180,8 @@ const Sidebar = ({
     if (onLogout) {
       onLogout();
     } else if (typeof window !== 'undefined') {
-      window.location.href = '/login';
+      const { navigate } = require('react-router-dom');
+      navigate('/login');
     }
   };
 
@@ -188,7 +191,7 @@ const Sidebar = ({
       {/* Logo/Header */}
       <div className="flex items-center h-16 px-6 border-b border-gray-100 flex-shrink-0">
         <div className="flex items-center">
-          <div className="w-6 h-6 mr-3 bg-blue-600 rounded flex items-center justify-center">
+          <div className="flex items-center justify-center">
             <span className="text-white text-xs font-bold">D</span>
           </div>
           <span className="text-xl font-semibold text-gray-900">Doctrack</span>
