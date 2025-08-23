@@ -126,7 +126,7 @@ const Login = () => {
           {/* Logo y encabezado */}
           <div className="text-center mb-12">
             <div className="flex items-center justify-center mb-4">
-                <img src={DoctrackIcon} className="w-8 h-8 mr-3 rounded flex items-center justify-center" />
+                <img src={DoctrackIcon} className="w-8 h-8 mr-3 rounded" />
               <div className="flex items-center justify-center">
                 <span className="text-white text-sm font-bold">D</span>
               </div>

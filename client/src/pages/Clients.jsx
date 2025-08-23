@@ -7,41 +7,104 @@ import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
   UserIcon,
-  GlobeAltIcon,
-  IdentificationIcon,
-  MapPinIcon,
+  EnvelopeIcon,
+  PhoneIcon,
   CalendarIcon,
   ArrowLeftIcon
 } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 
-// Real axios for API calls
-const axios = {
-  get: async (url) => {
-    const response = await fetch(`http://localhost:3001${url}`);
-    return { data: await response.json() };
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+const api = {
+  get: async (endpoint) => {
+    try {
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { data };
+    } catch (error) {
+      console.error(`GET ${endpoint} failed:`, error);
+      throw error;
+    }
   },
-  post: async (url, data) => {
-    const response = await fetch(`http://localhost:3001${url}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    return { data: await response.json() };
+  
+  post: async (endpoint, data) => {
+    try {
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      return { data: result };
+    } catch (error) {
+      console.error(`POST ${endpoint} failed:`, error);
+      throw error;
+    }
   },
-  put: async (url, data) => {
-    const response = await fetch(`http://localhost:3001${url}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    return { data: await response.json() };
+  
+  put: async (endpoint, data) => {
+    try {
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      return { data: result };
+    } catch (error) {
+      console.error(`PUT ${endpoint} failed:`, error);
+      throw error;
+    }
   },
-  delete: async (url) => {
-    const response = await fetch(`http://localhost:3001${url}`, {
-      method: 'DELETE'
-    });
-    return { data: await response.json() };
+  
+  delete: async (endpoint) => {
+    try {
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { data };
+    } catch (error) {
+      console.error(`DELETE ${endpoint} failed:`, error);
+      throw error;
+    }
   }
 };
 
@@ -53,21 +116,15 @@ const Clients = () => {
   const [editingClient, setEditingClient] = useState(null);
   const [notification, setNotification] = useState({ show: false, type: '', message: '' });
   const [formData, setFormData] = useState({
-    name: '',
-    country: '',
-    document: '',
-    address: '',
-    entryDate: ''
+    nombre: '',
+    apellido: '',
+    email: '',
+    telefono: '',
+    canal_ingreso: 'Web'
   });
   const [formErrors, setFormErrors] = useState({});
 
-  const documentTypes = [
-    { value: 'INE', label: 'INE (México)' },
-    { value: 'DNI', label: 'DNI (España/Argentina)' },
-    { value: 'CEDULA', label: 'Cédula' },
-    { value: 'PASAPORTE', label: 'Pasaporte' },
-    { value: 'OTRO', label: 'Otro' }
-  ];
+  const canalOptions = ['Web', 'Teléfono', 'Referido', 'Redes Sociales', 'Oficina', 'Otro'];
 
   useEffect(() => {
     fetchClients();
@@ -76,11 +133,21 @@ const Clients = () => {
   const fetchClients = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/clients');
-      setClients(response.data);
+      const response = await api.get('/api/clientes');
+      
+      // Adaptarse a la respuesta del backend
+      let clientsData = [];
+      if (response.data && Array.isArray(response.data.clientes)) {
+        clientsData = response.data.clientes;
+      } else if (Array.isArray(response.data)) {
+        clientsData = response.data;
+      }
+      
+      setClients(clientsData);
     } catch (error) {
-      showNotification('error', 'Error al cargar los clientes');
       console.error('Error fetching clients:', error);
+      showNotification('error', 'Error al cargar los clientes: ' + error.message);
+      setClients([]);
     } finally {
       setLoading(false);
     }
@@ -96,24 +163,22 @@ const Clients = () => {
   const validateForm = () => {
     const errors = {};
     
-    if (!formData.name.trim()) {
-      errors.name = 'El nombre es requerido';
+    if (!formData.nombre.trim()) {
+      errors.nombre = 'El nombre es requerido';
     }
     
-    if (!formData.country.trim()) {
-      errors.country = 'El país es requerido';
+    if (!formData.apellido.trim()) {
+      errors.apellido = 'El apellido es requerido';
     }
     
-    if (!formData.document.trim()) {
-      errors.document = 'El documento es requerido';
+    if (!formData.email.trim()) {
+      errors.email = 'El email es requerido';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = 'El email no es válido';
     }
     
-    if (!formData.address.trim()) {
-      errors.address = 'La dirección es requerida';
-    }
-    
-    if (!formData.entryDate) {
-      errors.entryDate = 'La fecha de entrada es requerida';
+    if (formData.telefono && !/^[\d\s\-\+\(\)]+$/.test(formData.telefono)) {
+      errors.telefono = 'El teléfono no es válido';
     }
 
     setFormErrors(errors);
@@ -127,50 +192,54 @@ const Clients = () => {
 
     try {
       const payload = {
-        ...formData,
-        entryDate: new Date(formData.entryDate).toISOString()
+        nombre: formData.nombre.trim(),
+        apellido: formData.apellido.trim(),
+        email: formData.email.trim().toLowerCase(),
+        telefono: formData.telefono.trim() || null,
+        canal_ingreso: formData.canal_ingreso
       };
 
+      let response;
       if (editingClient) {
-        const response = await axios.put(`/api/clients/${editingClient.id}`, payload);
+        response = await api.put(`/api/clientes/${editingClient.cliente_id}`, payload);
         setClients(clients.map(client => 
-          client.id === editingClient.id ? response.data : client
+          client.cliente_id === editingClient.cliente_id ? response.data : client
         ));
         showNotification('success', 'Cliente actualizado exitosamente');
       } else {
-        const response = await axios.post('/api/clients', payload);
-        setClients([...clients, response.data]);
+        response = await api.post('/api/clientes', payload);
+        setClients([response.data, ...clients]);
         showNotification('success', 'Cliente creado exitosamente');
       }
       
       closeModal();
     } catch (error) {
-      showNotification('error', `Error al ${editingClient ? 'actualizar' : 'crear'} el cliente`);
       console.error('Error submitting form:', error);
+      showNotification('error', `Error al ${editingClient ? 'actualizar' : 'crear'} el cliente: ${error.message}`);
     }
   };
 
   const handleEdit = (client) => {
     setEditingClient(client);
     setFormData({
-      name: client.name || '',
-      country: client.country || '',
-      document: client.document || '',
-      address: client.address || '',
-      entryDate: client.entryDate ? new Date(client.entryDate).toISOString().split('T')[0] : ''
+      nombre: client.nombre || '',
+      apellido: client.apellido || '',
+      email: client.email || '',
+      telefono: client.telefono || '',
+      canal_ingreso: client.canal_ingreso || 'Web'
     });
     setShowModal(true);
   };
 
   const handleDelete = async (clientId) => {
-    if (window.confirm('¿Está seguro que desea eliminar este cliente?')) {
+    if (window.confirm('¿Está seguro que desea eliminar este cliente? Esta acción también eliminará todos sus casos asociados.')) {
       try {
-        await axios.delete(`/api/clients/${clientId}`);
-        setClients(clients.filter(client => client.id !== clientId));
+        await api.delete(`/api/clientes/${clientId}`);
+        setClients(clients.filter(client => client.cliente_id !== clientId));
         showNotification('success', 'Cliente eliminado exitosamente');
       } catch (error) {
-        showNotification('error', 'Error al eliminar el cliente');
         console.error('Error deleting client:', error);
+        showNotification('error', 'Error al eliminar el cliente: ' + error.message);
       }
     }
   };
@@ -179,11 +248,11 @@ const Clients = () => {
     setShowModal(false);
     setEditingClient(null);
     setFormData({
-      name: '',
-      country: '',
-      document: '',
-      address: '',
-      entryDate: ''
+      nombre: '',
+      apellido: '',
+      email: '',
+      telefono: '',
+      canal_ingreso: 'Web'
     });
     setFormErrors({});
   };
@@ -199,7 +268,18 @@ const Clients = () => {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('es-ES');
+    try {
+      return new Date(dateString).toLocaleDateString('es-ES');
+    } catch (error) {
+      return 'Fecha inválida';
+    }
+  };
+
+  const getCasosActivos = (client) => {
+    if (client.caso && Array.isArray(client.caso)) {
+      return client.caso.filter(caso => caso.estado !== 'COMPLETADO').length;
+    }
+    return 0;
   };
 
   return (
@@ -250,6 +330,7 @@ const Clients = () => {
           {loading ? (
             <div className="flex justify-center items-center h-64">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              <span className="ml-4 text-gray-600">Cargando clientes...</span>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -260,16 +341,16 @@ const Clients = () => {
                       Cliente
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      País
+                      Contacto
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Documento
+                      Canal de Ingreso
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Dirección
+                      Casos Activos
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Fecha Ingreso
+                      Fecha Registro
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Acciones
@@ -278,7 +359,7 @@ const Clients = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {clients.map((client) => (
-                    <tr key={client.id} className="hover:bg-gray-50 transition-colors duration-150">
+                    <tr key={client.cliente_id} className="hover:bg-gray-50 transition-colors duration-150">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10">
@@ -287,32 +368,41 @@ const Clients = () => {
                             </div>
                           </div>
                           <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{client.name}</div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {`${client.nombre || ''} ${client.apellido || ''}`.trim() || 'Sin nombre'}
+                            </div>
+                            <div className="text-sm text-gray-500">ID: {client.cliente_id}</div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <GlobeAltIcon className="h-4 w-4 text-gray-400 mr-2" />
-                          <span className="text-sm text-gray-900">{client.country}</span>
+                        <div className="space-y-1">
+                          <div className="flex items-center text-sm text-gray-900">
+                            <EnvelopeIcon className="h-4 w-4 text-gray-400 mr-2" />
+                            {client.email || 'No especificado'}
+                          </div>
+                          {client.telefono && (
+                            <div className="flex items-center text-sm text-gray-500">
+                              <PhoneIcon className="h-4 w-4 text-gray-400 mr-2" />
+                              {client.telefono}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <IdentificationIcon className="h-4 w-4 text-gray-400 mr-2" />
-                          <div className="text-sm text-gray-900">{client.document}</div>
-                        </div>
+                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                          {client.canal_ingreso || 'No especificado'}
+                        </span>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-start">
-                          <MapPinIcon className="h-4 w-4 text-gray-400 mr-2 mt-0.5 flex-shrink-0" />
-                          <span className="text-sm text-gray-900">{client.address}</span>
-                        </div>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+                          {getCasosActivos(client)} casos
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
+                        <div className="flex items-center text-sm text-gray-900">
                           <CalendarIcon className="h-4 w-4 text-gray-400 mr-2" />
-                          <span className="text-sm text-gray-900">{formatDate(client.entryDate)}</span>
+                          {client.created_at ? formatDate(client.created_at) : 'No especificada'}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -325,7 +415,7 @@ const Clients = () => {
                             <PencilIcon className="h-4 w-4" />
                           </button>
                           <button
-                            onClick={() => handleDelete(client.id)}
+                            onClick={() => handleDelete(client.cliente_id)}
                             className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors duration-150"
                             title="Eliminar cliente"
                           >
@@ -338,7 +428,7 @@ const Clients = () => {
                 </tbody>
               </table>
               
-              {clients.length === 0 && (
+              {clients.length === 0 && !loading && (
                 <div className="text-center py-12">
                   <UserIcon className="mx-auto h-12 w-12 text-gray-400" />
                   <h3 className="mt-2 text-sm font-medium text-gray-900">No hay clientes</h3>
@@ -359,7 +449,7 @@ const Clients = () => {
             <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
             
             <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <div onSubmit={handleSubmit}>
+              <div>
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg leading-6 font-medium text-gray-900">
@@ -378,100 +468,98 @@ const Clients = () => {
                     {/* Nombre */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Nombre Completo *
+                        Nombre *
                       </label>
                       <input
                         type="text"
-                        name="name"
-                        value={formData.name}
+                        name="nombre"
+                        value={formData.nombre}
                         onChange={handleInputChange}
                         className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          formErrors.name ? 'border-red-300' : 'border-gray-300'
+                          formErrors.nombre ? 'border-red-300' : 'border-gray-300'
                         }`}
-                        placeholder="Ingrese el nombre completo"
+                        placeholder="Ingrese el nombre"
                       />
-                      {formErrors.name && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.name}</p>
+                      {formErrors.nombre && (
+                        <p className="mt-1 text-sm text-red-600">{formErrors.nombre}</p>
                       )}
                     </div>
 
-                    {/* País */}
+                    {/* Apellido */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        País de Origen *
+                        Apellido *
                       </label>
                       <input
                         type="text"
-                        name="country"
-                        value={formData.country}
+                        name="apellido"
+                        value={formData.apellido}
                         onChange={handleInputChange}
                         className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          formErrors.country ? 'border-red-300' : 'border-gray-300'
+                          formErrors.apellido ? 'border-red-300' : 'border-gray-300'
                         }`}
-                        placeholder="Ingrese el país"
+                        placeholder="Ingrese el apellido"
                       />
-                      {formErrors.country && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.country}</p>
+                      {formErrors.apellido && (
+                        <p className="mt-1 text-sm text-red-600">{formErrors.apellido}</p>
                       )}
                     </div>
 
-                    {/* Documento */}
+                    {/* Email */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Documento *
+                        Email *
                       </label>
                       <input
-                        type="text"
-                        name="document"
-                        value={formData.document}
+                        type="email"
+                        name="email"
+                        value={formData.email}
                         onChange={handleInputChange}
                         className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          formErrors.document ? 'border-red-300' : 'border-gray-300'
+                          formErrors.email ? 'border-red-300' : 'border-gray-300'
                         }`}
-                        placeholder="Ingrese el documento"
+                        placeholder="Ingrese el email"
                       />
-                      {formErrors.document && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.document}</p>
+                      {formErrors.email && (
+                        <p className="mt-1 text-sm text-red-600">{formErrors.email}</p>
                       )}
                     </div>
 
-                    {/* Dirección */}
+                    {/* Teléfono */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Dirección *
-                      </label>
-                      <textarea
-                        name="address"
-                        value={formData.address}
-                        onChange={handleInputChange}
-                        rows={3}
-                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          formErrors.address ? 'border-red-300' : 'border-gray-300'
-                        }`}
-                        placeholder="Ingrese la dirección completa"
-                      />
-                      {formErrors.address && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.address}</p>
-                      )}
-                    </div>
-
-                    {/* Fecha de Entrada */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Fecha de Entrada *
+                        Teléfono
                       </label>
                       <input
-                        type="date"
-                        name="entryDate"
-                        value={formData.entryDate}
+                        type="tel"
+                        name="telefono"
+                        value={formData.telefono}
                         onChange={handleInputChange}
                         className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          formErrors.entryDate ? 'border-red-300' : 'border-gray-300'
+                          formErrors.telefono ? 'border-red-300' : 'border-gray-300'
                         }`}
+                        placeholder="Ingrese el teléfono (opcional)"
                       />
-                      {formErrors.entryDate && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.entryDate}</p>
+                      {formErrors.telefono && (
+                        <p className="mt-1 text-sm text-red-600">{formErrors.telefono}</p>
                       )}
+                    </div>
+
+                    {/* Canal de Ingreso */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Canal de Ingreso
+                      </label>
+                      <select
+                        name="canal_ingreso"
+                        value={formData.canal_ingreso}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        {canalOptions.map(canal => (
+                          <option key={canal} value={canal}>{canal}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 </div>
