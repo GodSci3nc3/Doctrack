@@ -30,6 +30,7 @@ import {
   CreditCardIcon,
   StarIcon
 } from '@heroicons/react/24/outline';
+import DocktrackIcon from '../../assets/doctrackIcon.png'
 
 // Componente de ícono personalizado para IA
 const RobotIcon = ({ className }) => (
@@ -196,8 +197,8 @@ const Sidebar = ({
       {/* Logo/Header */}
       <div className="flex items-center h-16 px-6 border-b border-gray-100 flex-shrink-0">
         <div className="flex items-center">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
-            <span className="text-white text-xs font-bold">D</span>
+          <img src = {DocktrackIcon} className="w-8 h-8"/>
+          <div className=" flex items-center justify-center mr-3">
           </div>
           <span className="text-xl font-semibold text-gray-900">Doctrack</span>
         </div>

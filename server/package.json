@@ -8,6 +8,11 @@
     "dev": "node --watch index.js",
     "build": "prisma generate",
     "postinstall": "prisma generate",
+    "db:start": "docker compose up -d postgres",
+    "db:stop": "docker compose down",
+    "db:reset": "npx prisma migrate reset",
+    "db:migrate": "npx prisma migrate dev",
+    "db:studio": "npx prisma studio",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
