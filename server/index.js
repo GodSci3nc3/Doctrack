@@ -264,28 +264,63 @@ app.get('/api/auth/profile', authRequired, async function(req, res) {
 
 // === NUEVAS APIs PARA EL DASHBOARD MEJORADAS ===
 
-// Dashboard Stats - Obtener estadísticas generales
+// Dashboard Stats - Obtener estadísticas del usuario
 app.get('/api/dashboard/stats', authRequired, async function(req, res) {
   try {
-    console.log('Getting dashboard stats...');
+    console.log('Getting dashboard stats for user:', req.user.sub);
+    
+    const userId = req.user.sub;
     
     try {
-      // Obtener estadísticas reales de la base de datos
+      // Obtener estadísticas reales SOLO del usuario actual
       const [totalClientes, totalCasos, casosActivos, documentosTotales] = await Promise.all([
-        prisma.cliente.count(),
-        prisma.caso.count(),
-        prisma.caso.count({ where: { estado: { in: ['PENDIENTE', 'EN_PROCESO'] } } }),
-        prisma.documento.count()
+        prisma.cliente.count({ where: { created_by: userId } }),
+        prisma.caso.count({
+          where: {
+            cliente: {
+              created_by: userId
+            }
+          }
+        }),
+        prisma.caso.count({ 
+          where: { 
+            estado: { in: ['PENDIENTE', 'EN_PROCESO'] },
+            cliente: {
+              created_by: userId
+            }
+          } 
+        }),
+        prisma.documento.count({
+          where: {
+            caso: {
+              cliente: {
+                created_by: userId
+              }
+            }
+          }
+        })
       ]);
 
-      // Calcular casos completados
+      // Calcular casos completados del usuario
       const casosCompletados = await prisma.caso.count({ 
-        where: { estado: 'COMPLETADO' } 
+        where: { 
+          estado: 'COMPLETADO',
+          cliente: {
+            created_by: userId
+          }
+        } 
       });
 
-      // Documentos pendientes (sin fecha de recibido)
+      // Documentos pendientes del usuario
       const documentosPendientes = await prisma.documento.count({
-        where: { fecha_recibido: null }
+        where: { 
+          fecha_recibido: null,
+          caso: {
+            cliente: {
+              created_by: userId
+            }
+          }
+        }
       });
 
       const stats = {
@@ -295,17 +330,17 @@ app.get('/api/dashboard/stats', authRequired, async function(req, res) {
         documentosPendientes: documentosPendientes
       };
 
-      console.log('Real stats retrieved:', stats);
+      console.log('User-filtered stats retrieved:', stats);
       return res.json(stats);
       
     } catch (dbError) {
       console.error('Database error in stats:', dbError);
-      // Si hay error con la BD, devolver datos mock mejorados
+      // Si hay error con la BD, devolver datos mock
       const mockStats = {
-        clientes: 120,
-        casosActivos: 45,
-        casosCompletados: 75,
-        documentosPendientes: 15
+        clientes: 5,
+        casosActivos: 2,
+        casosCompletados: 3,
+        documentosPendientes: 1
       };
       return res.json(mockStats);
     }
@@ -512,22 +547,27 @@ app.get('/api/dashboard/checklist-pendientes', authRequired, async function(req,
 
 // NUEVAS APIs para completar funcionalidades
 
-// API para obtener lista completa de clientes
+// API para obtener lista completa de clientes del usuario
 app.get('/api/clientes', authRequired, async function(req, res) {
   try {
+    const userId = req.user.sub;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const search = req.query.search || '';
     
     const skip = (page - 1) * limit;
     
-    const where = search ? {
-      OR: [
-        { nombre: { contains: search, mode: 'insensitive' } },
-        { apellido: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } }
-      ]
-    } : {};
+    // WHERE clause que SIEMPRE incluye el filtro por usuario
+    const where = {
+      created_by: userId, // FILTRO CLAVE
+      ...(search && {
+        OR: [
+          { nombre: { contains: search, mode: 'insensitive' } },
+          { apellido: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } }
+        ]
+      })
+    };
     
     const [clientes, total] = await Promise.all([
       prisma.cliente.findMany({
@@ -563,16 +603,84 @@ app.get('/api/clientes', authRequired, async function(req, res) {
   }
 });
 
-// API para obtener lista completa de casos
+// API para crear un nuevo cliente
+app.post('/api/clientes', authRequired, async function(req, res) {
+  try {
+    console.log('Creating new client for user:', req.user.sub);
+    const { nombre, apellido, email, telefono, canal_ingreso } = req.body;
+    const userId = req.user.sub;
+    
+    // Validaciones básicas
+    if (!nombre || !apellido || !email) {
+      return res.status(400).json({
+        message: 'Los campos nombre, apellido y email son requeridos'
+      });
+    }
+    
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        message: 'El formato del email no es válido'
+      });
+    }
+    
+    // Verificar si el email ya existe EN LOS CLIENTES DEL USUARIO ACTUAL
+    const existingClient = await prisma.cliente.findFirst({
+      where: { 
+        email: email.toLowerCase().trim(),
+        created_by: userId // Solo verificar en los clientes del usuario actual
+      }
+    });
+    
+    if (existingClient) {
+      return res.status(400).json({
+        message: 'Ya tienes un cliente con ese email'
+      });
+    }
+    
+    // Crear el nuevo cliente asignado al usuario actual
+    const newClient = await prisma.cliente.create({
+      data: {
+        nombre: nombre.trim(),
+        apellido: apellido.trim(),
+        email: email.toLowerCase().trim(),
+        telefono: telefono?.trim() || null,
+        canal_ingreso: canal_ingreso || 'Directo',
+        created_by: userId // CAMPO CLAVE - Asignar al usuario actual
+      }
+    });
+    
+    console.log('Client created successfully for user:', userId, 'Client ID:', newClient.cliente_id);
+    
+    return res.status(201).json(newClient);
+    
+  } catch (err) {
+    console.error('Error creating client:', err);
+    return res.status(500).json({
+      message: 'Error al crear el cliente',
+      error: err.message
+    });
+  }
+});
+
+// API para obtener lista de casos del usuario
 app.get('/api/casos', authRequired, async function(req, res) {
   try {
+    const userId = req.user.sub;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const estado = req.query.estado || '';
     
     const skip = (page - 1) * limit;
     
-    const where = estado ? { estado } : {};
+    // WHERE clause que filtra por cliente del usuario actual
+    const where = {
+      cliente: {
+        created_by: userId // FILTRO CLAVE - Solo casos de clientes del usuario actual
+      },
+      ...(estado && { estado })
+    };
     
     const [casos, total] = await Promise.all([
       prisma.caso.findMany({
@@ -612,6 +720,318 @@ app.get('/api/casos', authRequired, async function(req, res) {
   } catch (err) {
     console.error('Error getting cases list:', err);
     return res.status(500).json({ message: 'Error obteniendo lista de casos' });
+  }
+});
+
+// API para crear un nuevo caso
+app.post('/api/casos', authRequired, async function(req, res) {
+  try {
+    console.log('Creating new case for user:', req.user.sub);
+    const { cliente_id, tipo_tramite, estado } = req.body;
+    const userId = req.user.sub;
+    
+    // Validaciones básicas
+    if (!cliente_id || !tipo_tramite) {
+      return res.status(400).json({
+        message: 'Los campos cliente_id y tipo_tramite son requeridos'
+      });
+    }
+    
+    // Verificar que el cliente existe Y pertenece al usuario actual
+    const clienteExiste = await prisma.cliente.findFirst({
+      where: { 
+        cliente_id: parseInt(cliente_id),
+        created_by: userId // VERIFICACIÓN DE OWNERSHIP
+      }
+    });
+    
+    if (!clienteExiste) {
+      return res.status(404).json({
+        message: 'El cliente especificado no existe o no tienes permisos para crear casos para él'
+      });
+    }
+    
+    // Crear el nuevo caso
+    const newCase = await prisma.caso.create({
+      data: {
+        cliente_id: parseInt(cliente_id),
+        tipo_tramite: tipo_tramite,
+        estado: estado || 'PENDIENTE'
+      },
+      include: {
+        cliente: {
+          select: {
+            nombre: true,
+            apellido: true,
+            email: true
+          }
+        }
+      }
+    });
+    
+    console.log('Case created successfully:', newCase.caso_id);
+    
+    return res.status(201).json(newCase);
+    
+  } catch (err) {
+    console.error('Error creating case:', err);
+    return res.status(500).json({
+      message: 'Error al crear el caso',
+      error: err.message
+    });
+  }
+});
+
+// API para actualizar un cliente
+app.put('/api/clientes/:id', authRequired, async function(req, res) {
+  try {
+    console.log('Updating client...');
+    const clienteId = parseInt(req.params.id);
+    const userId = req.user.sub;
+    const { nombre, apellido, email, telefono, canal_ingreso } = req.body;
+    
+    if (isNaN(clienteId)) {
+      return res.status(400).json({
+        message: 'ID de cliente inválido'
+      });
+    }
+    
+    // Verificar que el cliente existe Y pertenece al usuario actual
+    const existingClient = await prisma.cliente.findFirst({
+      where: { 
+        cliente_id: clienteId,
+        created_by: userId // VERIFICACIÓN DE OWNERSHIP
+      }
+    });
+    
+    if (!existingClient) {
+      return res.status(404).json({
+        message: 'Cliente no encontrado o no tienes permisos para modificarlo'
+      });
+    }
+    
+    // Construir objeto de actualización
+    const updateData = {};
+    if (nombre !== undefined) updateData.nombre = nombre.trim();
+    if (apellido !== undefined) updateData.apellido = apellido.trim();
+    if (email !== undefined) {
+      // Validar formato de email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({
+          message: 'El formato del email no es válido'
+        });
+      }
+      
+      // Verificar que el email no esté ya en uso por otro cliente DEL USUARIO ACTUAL
+      const emailInUse = await prisma.cliente.findFirst({
+        where: {
+          email: email.toLowerCase().trim(),
+          cliente_id: { not: clienteId },
+          created_by: userId // Solo buscar en los clientes del usuario actual
+        }
+      });
+      
+      if (emailInUse) {
+        return res.status(400).json({
+          message: 'Ya tienes otro cliente con ese email'
+        });
+      }
+      
+      updateData.email = email.toLowerCase().trim();
+    }
+    if (telefono !== undefined) updateData.telefono = telefono?.trim() || null;
+    if (canal_ingreso !== undefined) updateData.canal_ingreso = canal_ingreso;
+    
+    // Actualizar el cliente
+    const updatedClient = await prisma.cliente.update({
+      where: { cliente_id: clienteId },
+      data: updateData
+    });
+    
+    console.log('Client updated successfully:', updatedClient.cliente_id);
+    
+    return res.json(updatedClient);
+    
+  } catch (err) {
+    console.error('Error updating client:', err);
+    return res.status(500).json({
+      message: 'Error al actualizar el cliente',
+      error: err.message
+    });
+  }
+});
+
+// API para actualizar un caso
+app.put('/api/casos/:id', authRequired, async function(req, res) {
+  try {
+    const casoId = parseInt(req.params.id);
+    const userId = req.user.sub;
+    const { tipo_tramite, estado, fecha_aprobacion } = req.body;
+    
+    if (isNaN(casoId)) {
+      return res.status(400).json({
+        message: 'ID de caso inválido'
+      });
+    }
+    
+    // Verificar que el caso existe Y su cliente pertenece al usuario actual
+    const existingCase = await prisma.caso.findFirst({
+      where: { 
+        caso_id: casoId,
+        cliente: {
+          created_by: userId // VERIFICACIÓN DE OWNERSHIP
+        }
+      },
+      include: {
+        cliente: true
+      }
+    });
+    
+    if (!existingCase) {
+      return res.status(404).json({
+        message: 'Caso no encontrado o no tienes permisos para modificarlo'
+      });
+    }
+    
+    // Construir objeto de actualización
+    const updateData = {};
+    
+    if (tipo_tramite !== undefined) updateData.tipo_tramite = tipo_tramite;
+    if (estado !== undefined) {
+      const estadosValidos = ['PENDIENTE', 'EN_PROCESO', 'COMPLETADO', 'CANCELADO'];
+      if (!estadosValidos.includes(estado)) {
+        return res.status(400).json({
+          message: 'Estado inválido',
+          estadosValidos: estadosValidos
+        });
+      }
+      updateData.estado = estado;
+      
+      // Si se marca como COMPLETADO, establecer fecha de aprobación automáticamente
+      if (estado === 'COMPLETADO' && !existingCase.fecha_aprobacion) {
+        updateData.fecha_aprobacion = new Date();
+      }
+    }
+    
+    if (fecha_aprobacion !== undefined) {
+      updateData.fecha_aprobacion = fecha_aprobacion ? new Date(fecha_aprobacion) : null;
+    }
+    
+    // Actualizar el caso
+    const updatedCase = await prisma.caso.update({
+      where: { caso_id: casoId },
+      data: updateData,
+      include: {
+        cliente: {
+          select: {
+            nombre: true,
+            apellido: true,
+            email: true
+          }
+        }
+      }
+    });
+    
+    return res.json(updatedCase);
+    
+  } catch (err) {
+    console.error('Error updating case:', err);
+    return res.status(500).json({
+      message: 'Error al actualizar el caso',
+      error: err.message
+    });
+  }
+});
+
+// Eliminar cliente (verificando ownership)
+app.delete('/api/clientes/:id', authRequired, async function(req, res) {
+  try {
+    const clienteId = parseInt(req.params.id);
+    const userId = req.user.sub;
+    
+    if (isNaN(clienteId)) {
+      return res.status(400).json({
+        message: 'ID de cliente inválido'
+      });
+    }
+    
+    // Verificar que el cliente existe Y pertenece al usuario actual
+    const existingClient = await prisma.cliente.findFirst({
+      where: { 
+        cliente_id: clienteId,
+        created_by: userId
+      }
+    });
+    
+    if (!existingClient) {
+      return res.status(404).json({
+        message: 'Cliente no encontrado o no tienes permisos para eliminarlo'
+      });
+    }
+    
+    // Eliminar el cliente (los casos se eliminan en cascada)
+    await prisma.cliente.delete({
+      where: { cliente_id: clienteId }
+    });
+    
+    return res.json({ 
+      message: 'Cliente eliminado exitosamente',
+      cliente_id: clienteId 
+    });
+    
+  } catch (err) {
+    console.error('Error deleting client:', err);
+    return res.status(500).json({
+      message: 'Error al eliminar el cliente',
+      error: err.message
+    });
+  }
+});
+
+app.delete('/api/casos/:id', authRequired, async function(req, res) {
+  try {
+    const casoId = parseInt(req.params.id);
+    const userId = req.user.sub;
+    
+    if (isNaN(casoId)) {
+      return res.status(400).json({
+        message: 'ID de caso inválido'
+      });
+    }
+    
+    // Verificar que el caso existe Y su cliente pertenece al usuario actual
+    const existingCase = await prisma.caso.findFirst({
+      where: { 
+        caso_id: casoId,
+        cliente: {
+          created_by: userId
+        }
+      }
+    });
+    
+    if (!existingCase) {
+      return res.status(404).json({
+        message: 'Caso no encontrado o no tienes permisos para eliminarlo'
+      });
+    }
+    
+    // Eliminar el caso
+    await prisma.caso.delete({
+      where: { caso_id: casoId }
+    });
+    
+    return res.json({ 
+      message: 'Caso eliminado exitosamente',
+      caso_id: casoId 
+    });
+    
+  } catch (err) {
+    console.error('Error deleting case:', err);
+    return res.status(500).json({
+      message: 'Error al eliminar el caso',
+      error: err.message
+    });
   }
 });
 

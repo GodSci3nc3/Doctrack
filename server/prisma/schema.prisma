@@ -36,14 +36,21 @@ model cliente {
   email         String     @unique @db.VarChar(255)
   telefono      String?    @db.VarChar(20)
   canal_ingreso String?    @db.VarChar(50)
+  created_by    Int        // NUEVO CAMPO - ID del usuario que creó el cliente
   created_at    DateTime?  @default(now()) @db.Timestamp(6)
   updated_at    DateTime?  @default(now()) @db.Timestamp(6)
+  
+  // Relaciones existentes
   caso          caso[]
   contrato      contrato[]
   pago          pago[]
+  
+  // NUEVA RELACIÓN - Cliente pertenece a un usuario
+  usuario       usuariointerno @relation(fields: [created_by], references: [usuario_id], onDelete: Cascade)
 
   @@index([email], map: "idx_cliente_email")
   @@index([nombre, apellido], map: "idx_cliente_nombre_apellido")
+  @@index([created_by], map: "idx_cliente_created_by") // NUEVO ÍNDICE
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -122,5 +129,10 @@ model usuariointerno {
   created_at      DateTime?         @default(now()) @db.Timestamp(6)
   updated_at      DateTime?         @default(now()) @db.Timestamp(6)
   contrase_a      String            @map("contraseña") @db.VarChar(255)
+  
+  // Relaciones existentes
   historialaccion historialaccion[]
+  
+  // NUEVA RELACIÓN - Usuario tiene muchos clientes
+  clientes        cliente[]
 }
