@@ -1035,6 +1035,595 @@ app.delete('/api/casos/:id', authRequired, async function(req, res) {
   }
 });
 
+// === DOCUMENTOS APIs - ENHANCED FOR DOCUMENT CHECKLIST ===
+
+// API para obtener documentos de un caso (ENHANCED)
+app.get('/api/casos/:casoId/documentos', authRequired, async function(req, res) {
+  try {
+    const casoId = parseInt(req.params.casoId);
+    const userId = req.user.sub;
+    
+    if (isNaN(casoId)) {
+      return res.status(400).json({ message: 'ID de caso inválido' });
+    }
+
+    // VERIFICAR que el caso pertenece al usuario
+    const caso = await verifyCaseOwnership(casoId, userId);
+    if (!caso) {
+      return res.status(404).json({
+        message: 'Caso no encontrado o no tienes permisos para ver sus documentos'
+      });
+    }
+
+    // Obtener documentos del caso con información adicional
+    const documentos = await prisma.documento.findMany({
+      where: { caso_id: casoId },
+      orderBy: { created_at: 'desc' },
+      include: {
+        caso: {
+          select: {
+            caso_id: true,
+            tipo_tramite: true,
+            cliente: {
+              select: {
+                nombre: true,
+                apellido: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    console.log(`User ${userId} retrieved ${documentos.length} documents for case ${casoId}`);
+    return res.json(documentos);
+    
+  } catch (err) {
+    console.error('Error getting documents:', err);
+    return res.status(500).json({ message: 'Error obteniendo documentos' });
+  }
+});
+
+// API para crear un documento (ENHANCED)
+app.post('/api/documentos', authRequired, async function(req, res) {
+  try {
+    const { caso_id, tipo, fecha_enviado, fecha_recibido, firma_digital, url_documento } = req.body;
+    const userId = req.user.sub;
+    
+    if (!caso_id || !tipo) {
+      return res.status(400).json({
+        message: 'Los campos caso_id y tipo son requeridos'
+      });
+    }
+    
+    // VERIFICAR que el caso pertenece al usuario
+    const caso = await verifyCaseOwnership(parseInt(caso_id), userId);
+    if (!caso) {
+      return res.status(404).json({
+        message: 'El caso especificado no existe o no tienes permisos para crear documentos en él'
+      });
+    }
+    
+    // Verificar si ya existe un documento del mismo tipo para este caso
+    const existingDoc = await prisma.documento.findFirst({
+      where: {
+        caso_id: parseInt(caso_id),
+        tipo: tipo
+      }
+    });
+    
+    if (existingDoc) {
+      return res.status(400).json({
+        message: 'Ya existe un documento de este tipo para este caso'
+      });
+    }
+    
+    // Crear el documento
+    const newDocument = await prisma.documento.create({
+      data: {
+        caso_id: parseInt(caso_id),
+        tipo: tipo,
+        fecha_enviado: fecha_enviado ? new Date(fecha_enviado) : null,
+        fecha_recibido: fecha_recibido ? new Date(fecha_recibido) : null,
+        firma_digital: firma_digital || false,
+        url_documento: url_documento || null
+      },
+      include: {
+        caso: {
+          include: {
+            cliente: {
+              select: {
+                nombre: true,
+                apellido: true
+              }
+            }
+          }
+        }
+      }
+    });
+    
+    console.log(`User ${userId} created document ${newDocument.documento_id} for case ${caso_id}`);
+    return res.status(201).json(newDocument);
+    
+  } catch (err) {
+    console.error('Error creating document:', err);
+    return res.status(500).json({
+      message: 'Error al crear el documento',
+      error: err.message
+    });
+  }
+});
+
+// API para actualizar un documento (ENHANCED)
+app.put('/api/documentos/:id', authRequired, async function(req, res) {
+  try {
+    const documentoId = parseInt(req.params.id);
+    const userId = req.user.sub;
+    const { tipo, fecha_enviado, fecha_recibido, firma_digital, url_documento } = req.body;
+    
+    if (isNaN(documentoId)) {
+      return res.status(400).json({ message: 'ID de documento inválido' });
+    }
+    
+    // VERIFICAR OWNERSHIP
+    const existingDocument = await verifyDocumentOwnership(documentoId, userId);
+    if (!existingDocument) {
+      return res.status(404).json({
+        message: 'Documento no encontrado o no tienes permisos para modificarlo'
+      });
+    }
+    
+    const updateData = {};
+    if (tipo !== undefined) updateData.tipo = tipo;
+    if (fecha_enviado !== undefined) {
+      updateData.fecha_enviado = fecha_enviado ? new Date(fecha_enviado) : null;
+    }
+    if (fecha_recibido !== undefined) {
+      updateData.fecha_recibido = fecha_recibido ? new Date(fecha_recibido) : null;
+    }
+    if (firma_digital !== undefined) updateData.firma_digital = firma_digital;
+    if (url_documento !== undefined) updateData.url_documento = url_documento;
+    
+    // Auto-update timestamp
+    updateData.updated_at = new Date();
+    
+    const updatedDocument = await prisma.documento.update({
+      where: { documento_id: documentoId },
+      data: updateData,
+      include: {
+        caso: {
+          include: {
+            cliente: {
+              select: {
+                nombre: true,
+                apellido: true
+              }
+            }
+          }
+        }
+      }
+    });
+    
+    console.log(`User ${userId} updated document ${documentoId}`);
+    return res.json(updatedDocument);
+    
+  } catch (err) {
+    console.error('Error updating document:', err);
+    return res.status(500).json({
+      message: 'Error al actualizar el documento',
+      error: err.message
+    });
+  }
+});
+
+// API para marcar documento como recibido (ENHANCED)
+app.patch('/api/documentos/:id/recibir', authRequired, async function(req, res) {
+  try {
+    const documentoId = parseInt(req.params.id);
+    const userId = req.user.sub;
+    
+    if (isNaN(documentoId)) {
+      return res.status(400).json({ message: 'ID de documento inválido' });
+    }
+    
+    // VERIFICAR OWNERSHIP
+    const existingDocument = await verifyDocumentOwnership(documentoId, userId);
+    if (!existingDocument) {
+      return res.status(404).json({
+        message: 'Documento no encontrado o no tienes permisos para modificarlo'
+      });
+    }
+    
+    // Check if document is already marked as received
+    if (existingDocument.fecha_recibido) {
+      return res.status(400).json({
+        message: 'Este documento ya fue marcado como recibido'
+      });
+    }
+    
+    // Marcar como recibido
+    const updatedDocument = await prisma.documento.update({
+      where: { documento_id: documentoId },
+      data: { 
+        fecha_recibido: new Date(),
+        updated_at: new Date()
+      },
+      include: {
+        caso: {
+          include: {
+            cliente: {
+              select: {
+                nombre: true,
+                apellido: true
+              }
+            }
+          }
+        }
+      }
+    });
+    
+    console.log(`User ${userId} marked document ${documentoId} as received`);
+    return res.json(updatedDocument);
+    
+  } catch (err) {
+    console.error('Error marking document as received:', err);
+    return res.status(500).json({
+      message: 'Error al marcar documento como recibido',
+      error: err.message
+    });
+  }
+});
+
+// API para obtener estadísticas de documentos por caso
+app.get('/api/casos/:casoId/documentos/stats', authRequired, async function(req, res) {
+  try {
+    const casoId = parseInt(req.params.casoId);
+    const userId = req.user.sub;
+    
+    if (isNaN(casoId)) {
+      return res.status(400).json({ message: 'ID de caso inválido' });
+    }
+
+    // VERIFICAR que el caso pertenece al usuario
+    const caso = await verifyCaseOwnership(casoId, userId);
+    if (!caso) {
+      return res.status(404).json({
+        message: 'Caso no encontrado o no tienes permisos para ver sus estadísticas'
+      });
+    }
+
+    // Obtener estadísticas
+    const [total, recibidos, pendientes, enRevision] = await Promise.all([
+      prisma.documento.count({
+        where: { caso_id: casoId }
+      }),
+      prisma.documento.count({
+        where: { 
+          caso_id: casoId,
+          fecha_recibido: { not: null }
+        }
+      }),
+      prisma.documento.count({
+        where: { 
+          caso_id: casoId,
+          fecha_enviado: null,
+          fecha_recibido: null
+        }
+      }),
+      prisma.documento.count({
+        where: { 
+          caso_id: casoId,
+          fecha_enviado: { not: null },
+          fecha_recibido: null
+        }
+      })
+    ]);
+
+    const stats = {
+      total,
+      recibidos,
+      pendientes,
+      enRevision,
+      porcentajeCompletado: total > 0 ? Math.round((recibidos / total) * 100) : 0
+    };
+
+    console.log(`User ${userId} retrieved document stats for case ${casoId}:`, stats);
+    return res.json(stats);
+    
+  } catch (err) {
+    console.error('Error getting document stats:', err);
+    return res.status(500).json({ message: 'Error obteniendo estadísticas de documentos' });
+  }
+});
+
+// API para obtener plantilla de documentos requeridos por tipo de trámite
+app.get('/api/tramites/:tipo/documentos-requeridos', authRequired, async function(req, res) {
+  try {
+    const tipoTramite = decodeURIComponent(req.params.tipo);
+    
+    // Document requirements mapping (this should ideally be in a database)
+    const DOCUMENT_REQUIREMENTS = {
+      'Asilo Político': [
+        { tipo: 'Formulario', documento: 'I-589', requerido: true },
+        { tipo: 'Evidencia', documento: 'Declaración personal', requerido: true },
+        { tipo: 'Evidencia', documento: 'Pasaporte', requerido: true },
+        { tipo: 'Evidencia', documento: 'Evidencia persecución', requerido: true },
+        { tipo: 'Evidencia', documento: 'Documentos entrada a EE.UU.', requerido: true },
+        { tipo: 'Evidencia', documento: 'Cartas de apoyo', requerido: false },
+        { tipo: 'Evidencia', documento: 'Informes de país', requerido: false }
+      ],
+      'Residencia Permanente': [
+        { tipo: 'Formulario', documento: 'I-485', requerido: true },
+        { tipo: 'Formulario', documento: 'I-130', requerido: true },
+        { tipo: 'Formulario', documento: 'I-864', requerido: true },
+        { tipo: 'Evidencia', documento: 'Certificado matrimonio', requerido: true },
+        { tipo: 'Evidencia', documento: 'Certificado nacimiento', requerido: true },
+        { tipo: 'Evidencia', documento: 'Pasaporte beneficiario', requerido: true },
+        { tipo: 'Evidencia', documento: 'Pasaporte solicitante', requerido: true },
+        { tipo: 'Evidencia', documento: 'Evidencia relación genuina', requerido: true },
+        { tipo: 'Evidencia', documento: 'Declaraciones de impuestos', requerido: true },
+        { tipo: 'Evidencia', documento: 'Prueba de ingresos patrocinador', requerido: true }
+      ],
+      // Add more process types as needed...
+    };
+
+    const documentosRequeridos = DOCUMENT_REQUIREMENTS[tipoTramite] || [];
+    
+    return res.json({
+      tipoTramite,
+      documentos: documentosRequeridos,
+      total: documentosRequeridos.length,
+      requeridos: documentosRequeridos.filter(doc => doc.requerido).length
+    });
+    
+  } catch (err) {
+    console.error('Error getting required documents:', err);
+    return res.status(500).json({ message: 'Error obteniendo documentos requeridos' });
+  }
+});
+
+// API para crear múltiples documentos basados en plantilla
+app.post('/api/casos/:casoId/documentos/desde-plantilla', authRequired, async function(req, res) {
+  try {
+    const casoId = parseInt(req.params.casoId);
+    const userId = req.user.sub;
+    
+    if (isNaN(casoId)) {
+      return res.status(400).json({ message: 'ID de caso inválido' });
+    }
+
+    // VERIFICAR que el caso pertenece al usuario
+    const caso = await verifyCaseOwnership(casoId, userId);
+    if (!caso) {
+      return res.status(404).json({
+        message: 'Caso no encontrado o no tienes permisos para crear documentos en él'
+      });
+    }
+
+    // Get case details to determine document requirements
+    const caseDetails = await prisma.caso.findUnique({
+      where: { caso_id: casoId },
+      include: {
+        cliente: {
+          select: {
+            nombre: true,
+            apellido: true
+          }
+        }
+      }
+    });
+
+    // Get required documents for this case type
+    const response = await fetch(`${req.protocol}://${req.get('host')}/api/tramites/${encodeURIComponent(caseDetails.tipo_tramite)}/documentos-requeridos`, {
+      headers: {
+        'Cookie': req.headers.cookie
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Error obteniendo plantilla de documentos');
+    }
+    
+    const { documentos } = await response.json();
+
+    // Get existing documents to avoid duplicates
+    const existingDocs = await prisma.documento.findMany({
+      where: { caso_id: casoId },
+      select: { tipo: true }
+    });
+
+    const existingTypes = new Set(existingDocs.map(doc => doc.tipo));
+
+    // Create documents that don't already exist
+    const newDocuments = [];
+    const documentsToCreate = documentos.filter(doc => !existingTypes.has(doc.documento));
+
+    for (const docTemplate of documentsToCreate) {
+      const newDoc = await prisma.documento.create({
+        data: {
+          caso_id: casoId,
+          tipo: docTemplate.documento,
+          fecha_enviado: null,
+          fecha_recibido: null,
+          firma_digital: false
+        }
+      });
+      newDocuments.push(newDoc);
+    }
+
+    console.log(`User ${userId} created ${newDocuments.length} documents from template for case ${casoId}`);
+    return res.status(201).json({
+      message: `${newDocuments.length} documentos creados desde plantilla`,
+      documentos: newDocuments,
+      existentes: existingDocs.length,
+      nuevos: newDocuments.length
+    });
+    
+  } catch (err) {
+    console.error('Error creating documents from template:', err);
+    return res.status(500).json({
+      message: 'Error creando documentos desde plantilla',
+      error: err.message
+    });
+  }
+});
+
+// API para obtener resumen de documentos del usuario
+app.get('/api/documentos/resumen', authRequired, async function(req, res) {
+  try {
+    const userId = req.user.sub;
+    
+    const [totalDocumentos, documentosRecibidos, documentosPendientes, documentosVencidos] = await Promise.all([
+      // Total documentos del usuario
+      prisma.documento.count({
+        where: {
+          caso: {
+            cliente: { created_by: userId }
+          }
+        }
+      }),
+      
+      // Documentos recibidos
+      prisma.documento.count({
+        where: {
+          caso: {
+            cliente: { created_by: userId }
+          },
+          fecha_recibido: { not: null }
+        }
+      }),
+      
+      // Documentos pendientes
+      prisma.documento.count({
+        where: {
+          caso: {
+            cliente: { created_by: userId }
+          },
+          fecha_recibido: null
+        }
+      }),
+      
+      // Documentos "vencidos" (enviados hace más de 30 días sin recibir)
+      prisma.documento.count({
+        where: {
+          caso: {
+            cliente: { created_by: userId }
+          },
+          fecha_enviado: {
+            lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+          },
+          fecha_recibido: null
+        }
+      })
+    ]);
+
+    const resumen = {
+      totalDocumentos,
+      documentosRecibidos,
+      documentosPendientes,
+      documentosVencidos,
+      porcentajeCompletado: totalDocumentos > 0 ? Math.round((documentosRecibidos / totalDocumentos) * 100) : 0
+    };
+
+    console.log(`User ${userId} document summary:`, resumen);
+    return res.json(resumen);
+    
+  } catch (err) {
+    console.error('Error getting document summary:', err);
+    return res.status(500).json({ message: 'Error obteniendo resumen de documentos' });
+  }
+});
+
+// Función para verificar que un caso pertenece al usuario actual
+async function verifyCaseOwnership(casoId, userId) {
+  try {
+    console.log(`Verifying case ownership: Case ${casoId} for User ${userId}`);
+    
+    const caso = await prisma.caso.findFirst({
+      where: {
+        caso_id: casoId,
+        cliente: {
+          created_by: userId // El caso debe pertenecer a un cliente del usuario
+        }
+      },
+      include: {
+        cliente: {
+          select: {
+            cliente_id: true,
+            nombre: true,
+            apellido: true,
+            created_by: true
+          }
+        }
+      }
+    });
+    
+    console.log(`Case ownership result:`, caso ? 'ALLOWED' : 'DENIED');
+    return caso;
+  } catch (err) {
+    console.error('Error verifying case ownership:', err);
+    return null;
+  }
+}
+
+// Función para verificar que un documento pertenece al usuario actual
+async function verifyDocumentOwnership(documentoId, userId) {
+  try {
+    console.log(`Verifying document ownership: Document ${documentoId} for User ${userId}`);
+    
+    const documento = await prisma.documento.findFirst({
+      where: {
+        documento_id: documentoId,
+        caso: {
+          cliente: {
+            created_by: userId // El documento debe pertenecer a un caso de un cliente del usuario
+          }
+        }
+      },
+      include: {
+        caso: {
+          include: {
+            cliente: {
+              select: {
+                cliente_id: true,
+                nombre: true,
+                apellido: true,
+                created_by: true
+              }
+            }
+          }
+        }
+      }
+    });
+    
+    console.log(`Document ownership result:`, documento ? 'ALLOWED' : 'DENIED');
+    return documento;
+  } catch (err) {
+    console.error('Error verifying document ownership:', err);
+    return null;
+  }
+}
+
+// Función para verificar que un cliente pertenece al usuario actual
+async function verifyClientOwnership(clienteId, userId) {
+  try {
+    console.log(`Verifying client ownership: Client ${clienteId} for User ${userId}`);
+    
+    const cliente = await prisma.cliente.findFirst({
+      where: {
+        cliente_id: clienteId,
+        created_by: userId // El cliente debe ser creado por el usuario
+      }
+    });
+    
+    console.log(`Client ownership result:`, cliente ? 'ALLOWED' : 'DENIED');
+    return cliente;
+  } catch (err) {
+    console.error('Error verifying client ownership:', err);
+    return null;
+  }
+}
+
 // Test endpoint para verificar estructura de tablas
 app.get('/api/debug/tables', authRequired, async function(req, res) {
   try {
