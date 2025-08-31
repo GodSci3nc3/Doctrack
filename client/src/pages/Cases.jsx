@@ -19,9 +19,9 @@ import {
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-// Document requirements by process type
+// Document requirements by process type - UPDATED WITH CORRECT PROCESSES
 const DOCUMENT_REQUIREMENTS = {
-  'Asilo Político': [
+  'Asilo Afirmativo': [
     { tipo: 'Formulario', documento: 'I-589' },
     { tipo: 'Evidencia', documento: 'Declaración personal' },
     { tipo: 'Evidencia', documento: 'Pasaporte' },
@@ -30,19 +30,56 @@ const DOCUMENT_REQUIREMENTS = {
     { tipo: 'Evidencia', documento: 'Cartas de apoyo' },
     { tipo: 'Evidencia', documento: 'Informes de país' }
   ],
-  'Residencia Permanente': [
-    { tipo: 'Formulario', documento: 'I-485' },
-    { tipo: 'Formulario', documento: 'I-130' },
-    { tipo: 'Formulario', documento: 'I-864' },
-    { tipo: 'Evidencia', documento: 'Certificado matrimonio' },
-    { tipo: 'Evidencia', documento: 'Certificado nacimiento' },
-    { tipo: 'Evidencia', documento: 'Pasaporte beneficiario' },
-    { tipo: 'Evidencia', documento: 'Pasaporte solicitante' },
-    { tipo: 'Evidencia', documento: 'Evidencia relación genuina' },
-    { tipo: 'Evidencia', documento: 'Declaraciones de impuestos' },
-    { tipo: 'Evidencia', documento: 'Prueba de ingresos patrocinador' }
+  'Asilo Defensivo': [
+    { tipo: 'Formulario', documento: 'I-589' },
+    { tipo: 'Evidencia', documento: 'Declaración personal' },
+    { tipo: 'Evidencia', documento: 'Pasaporte' },
+    { tipo: 'Evidencia', documento: 'Evidencia persecución' },
+    { tipo: 'Evidencia', documento: 'I-94' },
+    { tipo: 'Evidencia', documento: 'Informes de país' },
+    { tipo: 'Evidencia', documento: 'Cartas de testigos' }
   ],
-  'Visa de Trabajo H-1B': [
+  'Cambio de Estatus (COS)': [
+    { tipo: 'Formulario', documento: 'I-539' },
+    { tipo: 'Evidencia', documento: 'Pasaporte' },
+    { tipo: 'Evidencia', documento: 'Visa actual' },
+    { tipo: 'Evidencia', documento: 'I-94' },
+    { tipo: 'Evidencia', documento: 'Carta de motivos personales' },
+    { tipo: 'Evidencia', documento: 'Prueba de fondos' },
+    { tipo: 'Evidencia', documento: 'Prueba de estatus legal' },
+    { tipo: 'Evidencia', documento: 'Carta aceptación escuela' }
+  ],
+  'E-1 Comerciante': [
+    { tipo: 'Formulario', documento: 'DS-160' },
+    { tipo: 'Formulario', documento: 'I-129 (suplemento E)' },
+    { tipo: 'Evidencia', documento: 'Pasaporte' },
+    { tipo: 'Evidencia', documento: 'Nacionalidad tratado' },
+    { tipo: 'Evidencia', documento: 'Documentación comercio' },
+    { tipo: 'Evidencia', documento: 'Contratos/facturas/shipping docs' },
+    { tipo: 'Evidencia', documento: 'Evidencia operaciones regulares' }
+  ],
+  'E-2 Inversionista': [
+    { tipo: 'Formulario', documento: 'DS-160' },
+    { tipo: 'Formulario', documento: 'I-129 (suplemento E)' },
+    { tipo: 'Evidencia', documento: 'Pasaporte' },
+    { tipo: 'Evidencia', documento: 'Nacionalidad tratado' },
+    { tipo: 'Evidencia', documento: 'Evidencia inversión' },
+    { tipo: 'Evidencia', documento: 'Plan de negocios' },
+    { tipo: 'Evidencia', documento: 'Prueba negocio activo' }
+  ],
+  'EB-2 NIW': [
+    { tipo: 'Formulario', documento: 'I-140' },
+    { tipo: 'Evidencia', documento: 'Declaración Personal' },
+    { tipo: 'Evidencia', documento: 'Títulos académicos' },
+    { tipo: 'Evidencia', documento: 'Equivalencia Títulos' },
+    { tipo: 'Evidencia', documento: 'Experiencia laboral' },
+    { tipo: 'Evidencia', documento: 'Cartas recomendación' },
+    { tipo: 'Evidencia', documento: 'Cartas de interés' },
+    { tipo: 'Evidencia', documento: 'Plan impacto nacional' },
+    { tipo: 'Evidencia', documento: 'Pasaporte' },
+    { tipo: 'Evidencia', documento: 'Pruebas estatus legal' }
+  ],
+  'H1B1 Consular': [
     { tipo: 'Formulario', documento: 'DS-160' },
     { tipo: 'Evidencia', documento: 'Oferta laboral' },
     { tipo: 'Evidencia', documento: 'Título universitario/equivalencia' },
@@ -51,7 +88,18 @@ const DOCUMENT_REQUIREMENTS = {
     { tipo: 'Evidencia', documento: 'Arraigo' },
     { tipo: 'Evidencia', documento: 'Carta empleador' }
   ],
-  'Visa de Trabajo L-1': [
+  'H1B1 Extensión': [
+    { tipo: 'Formulario', documento: 'I-129' },
+    { tipo: 'Formulario', documento: 'I-539' },
+    { tipo: 'Evidencia', documento: 'Carta de empleo vigente' },
+    { tipo: 'Evidencia', documento: 'Contratos/nóminas' },
+    { tipo: 'Evidencia', documento: 'Título universitario' },
+    { tipo: 'Evidencia', documento: 'Pasaporte' },
+    { tipo: 'Evidencia', documento: 'Prueba de estatus legal' },
+    { tipo: 'Evidencia', documento: 'LCA vigente' },
+    { tipo: 'Evidencia', documento: 'LCA aprobado' }
+  ],
+  'L-1 Transferencia': [
     { tipo: 'Formulario', documento: 'I-129 (suplemento L)' },
     { tipo: 'Formulario', documento: 'DS-160' },
     { tipo: 'Evidencia', documento: 'Plan de negocios' },
@@ -61,15 +109,7 @@ const DOCUMENT_REQUIREMENTS = {
     { tipo: 'Evidencia', documento: 'Comprobante empleo extranjero' },
     { tipo: 'Evidencia', documento: 'Pasaporte' }
   ],
-  'Ciudadanía': [
-    { tipo: 'Formulario', documento: 'N-400' },
-    { tipo: 'Evidencia', documento: 'Pasaporte' },
-    { tipo: 'Evidencia', documento: 'Green Card' },
-    { tipo: 'Evidencia', documento: 'Declaraciones de impuestos' },
-    { tipo: 'Evidencia', documento: 'Evidencia residencia física' },
-    { tipo: 'Evidencia', documento: 'Certificados penales' }
-  ],
-  'Reunificación Familiar': [
+  'Peticiones Familiares': [
     { tipo: 'Formulario', documento: 'I-130' },
     { tipo: 'Formulario', documento: 'I-485' },
     { tipo: 'Formulario', documento: 'I-864' },
@@ -84,44 +124,6 @@ const DOCUMENT_REQUIREMENTS = {
     { tipo: 'Evidencia', documento: 'Evidencia relación genuina' },
     { tipo: 'Evidencia', documento: 'Declaraciones de impuestos' },
     { tipo: 'Evidencia', documento: 'Prueba de ingresos patrocinador' }
-  ],
-  'Visa de Estudiante F-1': [
-    { tipo: 'Formulario', documento: 'DS-160' },
-    { tipo: 'Evidencia', documento: 'I-20' },
-    { tipo: 'Evidencia', documento: 'Pasaporte' },
-    { tipo: 'Evidencia', documento: 'Prueba de fondos' },
-    { tipo: 'Evidencia', documento: 'Carta aceptación escuela' },
-    { tipo: 'Evidencia', documento: 'Títulos académicos' }
-  ],
-  'Visa de Inversionista EB-5': [
-    { tipo: 'Formulario', documento: 'I-526' },
-    { tipo: 'Evidencia', documento: 'Plan de negocios' },
-    { tipo: 'Evidencia', documento: 'Evidencia inversión' },
-    { tipo: 'Evidencia', documento: 'Fuente legal de fondos' },
-    { tipo: 'Evidencia', documento: 'Pasaporte' },
-    { tipo: 'Evidencia', documento: 'Certificados penales' }
-  ],
-  'Deportación - Defensa': [
-    { tipo: 'Formulario', documento: 'EOIR-42A' },
-    { tipo: 'Evidencia', documento: 'Evidencia arraigo familiar' },
-    { tipo: 'Evidencia', documento: 'Evidencia arraigo comunitario' },
-    { tipo: 'Evidencia', documento: 'Certificados penales' },
-    { tipo: 'Evidencia', documento: 'Cartas de apoyo' },
-    { tipo: 'Evidencia', documento: 'Evidencia rehabilitación' }
-  ],
-  'TPS (Estatus de Protección Temporal)': [
-    { tipo: 'Formulario', documento: 'I-821' },
-    { tipo: 'Evidencia', documento: 'Pasaporte' },
-    { tipo: 'Evidencia', documento: 'Evidencia nacionalidad' },
-    { tipo: 'Evidencia', documento: 'Evidencia presencia continua' },
-    { tipo: 'Evidencia', documento: 'Certificados penales' }
-  ],
-  'DACA': [
-    { tipo: 'Formulario', documento: 'I-821D' },
-    { tipo: 'Evidencia', documento: 'Evidencia llegada antes 16 años' },
-    { tipo: 'Evidencia', documento: 'Evidencia residencia continua' },
-    { tipo: 'Evidencia', documento: 'Records académicos' },
-    { tipo: 'Evidencia', documento: 'Certificados penales' }
   ]
 };
 
@@ -311,6 +313,31 @@ const DocumentChecklist = ({
     }
   };
 
+  // Function to initialize all required documents for the case
+  const handleInitializeDocuments = async () => {
+    try {
+      const requiredDocuments = DOCUMENT_REQUIREMENTS[caseData?.tipo_tramite] || [];
+      const existingTypes = new Set(documents.map(doc => doc.tipo));
+      
+      const documentsToCreate = requiredDocuments.filter(doc => !existingTypes.has(doc.documento));
+      
+      for (const requiredDoc of documentsToCreate) {
+        await api.post('/api/documentos', {
+          caso_id: caseData.caso_id,
+          tipo: requiredDoc.documento,
+          fecha_enviado: null, // Initially no date sent
+          fecha_recibido: null  // Initially not received
+        });
+      }
+      
+      showNotification('success', `${documentsToCreate.length} documentos inicializados`);
+      loadDocuments();
+    } catch (error) {
+      console.error('Error initializing documents:', error);
+      showNotification('error', 'Error al inicializar documentos: ' + error.message);
+    }
+  };
+
   const requiredDocuments = DOCUMENT_REQUIREMENTS[caseData?.tipo_tramite] || [];
   const completedCount = requiredDocuments.filter(doc => {
     const status = getDocumentStatus(doc);
@@ -398,16 +425,27 @@ const DocumentChecklist = ({
               <h2 className="text-2xl font-bold text-purple-600">
                 Document Checklist
               </h2>
-              <button
-                onClick={() => {
-                  // Optional: Add a bulk add documents functionality
-                  showNotification('info', 'Use individual "Add Document" buttons to add specific documents');
-                }}
-                className="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                <PlusIcon className="w-4 h-4 mr-2" />
-                Add New Document
-              </button>
+              <div className="flex space-x-3">
+                {documents.length === 0 && requiredDocuments.length > 0 && (
+                  <button
+                    onClick={handleInitializeDocuments}
+                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <PlusIcon className="w-4 h-4 mr-2" />
+                    Initialize All Documents
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    // Optional: Add a bulk add documents functionality
+                    showNotification('info', 'Use individual "Add Document" buttons to add specific documents');
+                  }}
+                  className="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  <PlusIcon className="w-4 h-4 mr-2" />
+                  Add New Document
+                </button>
+              </div>
             </div>
 
             {loading ? (
@@ -442,6 +480,9 @@ const DocumentChecklist = ({
                           <h3 className="font-medium text-gray-900">
                             {requiredDoc.documento}
                           </h3>
+                          <p className="text-sm text-gray-500">
+                            {requiredDoc.tipo}
+                          </p>
                         </div>
                       </div>
 
@@ -511,19 +552,18 @@ const Cases = () => {
   });
   const [formErrors, setFormErrors] = useState({});
 
-  // Limited process types - only the 10 available ones
+  // UPDATED: Only the 10 correct process types from your document
   const tramiteTypes = [
-    'Asilo Político', 
-    'Residencia Permanente', 
-    'Visa de Trabajo H-1B', 
-    'Visa de Trabajo L-1',
-    'Ciudadanía', 
-    'Reunificación Familiar',
-    'Visa de Estudiante F-1',
-    'Visa de Inversionista EB-5',
-    'Deportación - Defensa',
-    'TPS (Estatus de Protección Temporal)',
-    'DACA'
+    'Asilo Afirmativo',
+    'Asilo Defensivo', 
+    'Cambio de Estatus (COS)',
+    'E-1 Comerciante',
+    'E-2 Inversionista',
+    'EB-2 NIW',
+    'H1B1 Consular',
+    'H1B1 Extensión',
+    'L-1 Transferencia',
+    'Peticiones Familiares'
   ];
   
   const estadoOptions = ['PENDIENTE', 'EN_PROCESO', 'COMPLETADO', 'CANCELADO'];

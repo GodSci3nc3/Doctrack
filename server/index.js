@@ -1036,11 +1036,118 @@ app.delete('/api/casos/:id', authRequired, async function(req, res) {
 });
 
 // === DOCUMENTOS APIs - ENHANCED FOR DOCUMENT CHECKLIST ===
+// Updated document requirements mapping - ONLY the 10 approved processes
+const DOCUMENT_REQUIREMENTS = {
+  'Asilo Afirmativo': [
+    { tipo: 'Formulario', documento: 'I-589', requerido: true },
+    { tipo: 'Evidencia', documento: 'Declaración personal', requerido: true },
+    { tipo: 'Evidencia', documento: 'Pasaporte', requerido: true },
+    { tipo: 'Evidencia', documento: 'Evidencia persecución', requerido: true },
+    { tipo: 'Evidencia', documento: 'Documentos entrada a EE.UU.', requerido: true },
+    { tipo: 'Evidencia', documento: 'Cartas de apoyo', requerido: false },
+    { tipo: 'Evidencia', documento: 'Informes de país', requerido: false }
+  ],
+  'Asilo Defensivo': [
+    { tipo: 'Formulario', documento: 'I-589', requerido: true },
+    { tipo: 'Evidencia', documento: 'Declaración personal', requerido: true },
+    { tipo: 'Evidencia', documento: 'Pasaporte', requerido: true },
+    { tipo: 'Evidencia', documento: 'Evidencia persecución', requerido: true },
+    { tipo: 'Evidencia', documento: 'I-94', requerido: true },
+    { tipo: 'Evidencia', documento: 'Informes de país', requerido: false },
+    { tipo: 'Evidencia', documento: 'Cartas de testigos', requerido: false }
+  ],
+  'Cambio de Estatus (COS)': [
+    { tipo: 'Formulario', documento: 'I-539', requerido: true },
+    { tipo: 'Evidencia', documento: 'Pasaporte', requerido: true },
+    { tipo: 'Evidencia', documento: 'Visa actual', requerido: true },
+    { tipo: 'Evidencia', documento: 'I-94', requerido: true },
+    { tipo: 'Evidencia', documento: 'Carta de motivos personales', requerido: true },
+    { tipo: 'Evidencia', documento: 'Prueba de fondos', requerido: true },
+    { tipo: 'Evidencia', documento: 'Prueba de estatus legal', requerido: true },
+    { tipo: 'Evidencia', documento: 'Carta aceptación escuela', requerido: true }
+  ],
+  'E-1 Comerciante': [
+    { tipo: 'Formulario', documento: 'DS-160', requerido: true },
+    { tipo: 'Formulario', documento: 'I-129 (suplemento E)', requerido: true },
+    { tipo: 'Evidencia', documento: 'Pasaporte', requerido: true },
+    { tipo: 'Evidencia', documento: 'Nacionalidad tratado', requerido: true },
+    { tipo: 'Evidencia', documento: 'Documentación comercio', requerido: true },
+    { tipo: 'Evidencia', documento: 'Contratos/facturas/shipping docs', requerido: true },
+    { tipo: 'Evidencia', documento: 'Evidencia operaciones regulares', requerido: true }
+  ],
+  'E-2 Inversionista': [
+    { tipo: 'Formulario', documento: 'DS-160', requerido: true },
+    { tipo: 'Formulario', documento: 'I-129 (suplemento E)', requerido: true },
+    { tipo: 'Evidencia', documento: 'Pasaporte', requerido: true },
+    { tipo: 'Evidencia', documento: 'Nacionalidad tratado', requerido: true },
+    { tipo: 'Evidencia', documento: 'Evidencia inversión', requerido: true },
+    { tipo: 'Evidencia', documento: 'Plan de negocios', requerido: true },
+    { tipo: 'Evidencia', documento: 'Prueba negocio activo', requerido: true }
+  ],
+  'EB-2 NIW': [
+    { tipo: 'Formulario', documento: 'I-140', requerido: true },
+    { tipo: 'Evidencia', documento: 'Declaración Personal', requerido: true },
+    { tipo: 'Evidencia', documento: 'Títulos académicos', requerido: true },
+    { tipo: 'Evidencia', documento: 'Equivalencia Títulos', requerido: true },
+    { tipo: 'Evidencia', documento: 'Experiencia laboral', requerido: true },
+    { tipo: 'Evidencia', documento: 'Cartas recomendación', requerido: true },
+    { tipo: 'Evidencia', documento: 'Cartas de interés', requerido: true },
+    { tipo: 'Evidencia', documento: 'Plan impacto nacional', requerido: true },
+    { tipo: 'Evidencia', documento: 'Pasaporte', requerido: true },
+    { tipo: 'Evidencia', documento: 'Pruebas estatus legal', requerido: true }
+  ],
+  'H1B1 Consular': [
+    { tipo: 'Formulario', documento: 'DS-160', requerido: true },
+    { tipo: 'Evidencia', documento: 'Oferta laboral', requerido: true },
+    { tipo: 'Evidencia', documento: 'Título universitario/equivalencia', requerido: true },
+    { tipo: 'Evidencia', documento: 'Pasaporte', requerido: true },
+    { tipo: 'Evidencia', documento: 'LCA aprobado', requerido: true },
+    { tipo: 'Evidencia', documento: 'Arraigo', requerido: true },
+    { tipo: 'Evidencia', documento: 'Carta empleador', requerido: true }
+  ],
+  'H1B1 Extensión': [
+    { tipo: 'Formulario', documento: 'I-129', requerido: true },
+    { tipo: 'Formulario', documento: 'I-539', requerido: true },
+    { tipo: 'Evidencia', documento: 'Carta de empleo vigente', requerido: true },
+    { tipo: 'Evidencia', documento: 'Contratos/nóminas', requerido: true },
+    { tipo: 'Evidencia', documento: 'Título universitario', requerido: true },
+    { tipo: 'Evidencia', documento: 'Pasaporte', requerido: true },
+    { tipo: 'Evidencia', documento: 'Prueba de estatus legal', requerido: true },
+    { tipo: 'Evidencia', documento: 'LCA vigente', requerido: true },
+    { tipo: 'Evidencia', documento: 'LCA aprobado', requerido: true }
+  ],
+  'L-1 Transferencia': [
+    { tipo: 'Formulario', documento: 'I-129 (suplemento L)', requerido: true },
+    { tipo: 'Formulario', documento: 'DS-160', requerido: true },
+    { tipo: 'Evidencia', documento: 'Plan de negocios', requerido: true },
+    { tipo: 'Evidencia', documento: 'Carta transferencia', requerido: true },
+    { tipo: 'Evidencia', documento: 'Organigrama', requerido: true },
+    { tipo: 'Evidencia', documento: 'Evidencia relación empresas', requerido: true },
+    { tipo: 'Evidencia', documento: 'Comprobante empleo extranjero', requerido: true },
+    { tipo: 'Evidencia', documento: 'Pasaporte', requerido: true }
+  ],
+  'Peticiones Familiares': [
+    { tipo: 'Formulario', documento: 'I-130', requerido: true },
+    { tipo: 'Formulario', documento: 'I-485', requerido: true },
+    { tipo: 'Formulario', documento: 'I-864', requerido: true },
+    { tipo: 'Formulario', documento: 'I-765', requerido: true },
+    { tipo: 'Formulario', documento: 'I-693', requerido: true },
+    { tipo: 'Evidencia', documento: 'Certificado matrimonio', requerido: true },
+    { tipo: 'Evidencia', documento: 'Certificado nacimiento', requerido: true },
+    { tipo: 'Evidencia', documento: 'Pasaporte beneficiario', requerido: true },
+    { tipo: 'Evidencia', documento: 'Pasaporte solicitante', requerido: true },
+    { tipo: 'Evidencia', documento: 'Visa', requerido: true },
+    { tipo: 'Evidencia', documento: 'I-94', requerido: true },
+    { tipo: 'Evidencia', documento: 'Evidencia relación genuina', requerido: true },
+    { tipo: 'Evidencia', documento: 'Declaraciones de impuestos', requerido: true },
+    { tipo: 'Evidencia', documento: 'Prueba de ingresos patrocinador', requerido: true }
+  ]
+};
 
-// API para obtener documentos de un caso (ENHANCED)
-app.get('/api/casos/:casoId/documentos', authRequired, async function(req, res) {
+// API para obtener un caso específico por ID (MISSING ENDPOINT)
+app.get('/api/casos/:id', authRequired, async function(req, res) {
   try {
-    const casoId = parseInt(req.params.casoId);
+    const casoId = parseInt(req.params.id);
     const userId = req.user.sub;
     
     if (isNaN(casoId)) {
@@ -1048,39 +1155,47 @@ app.get('/api/casos/:casoId/documentos', authRequired, async function(req, res) 
     }
 
     // VERIFICAR que el caso pertenece al usuario
-    const caso = await verifyCaseOwnership(casoId, userId);
-    if (!caso) {
-      return res.status(404).json({
-        message: 'Caso no encontrado o no tienes permisos para ver sus documentos'
-      });
-    }
-
-    // Obtener documentos del caso con información adicional
-    const documentos = await prisma.documento.findMany({
-      where: { caso_id: casoId },
-      orderBy: { created_at: 'desc' },
+    const caso = await prisma.caso.findFirst({
+      where: {
+        caso_id: casoId,
+        cliente: {
+          created_by: userId
+        }
+      },
       include: {
-        caso: {
+        cliente: {
           select: {
-            caso_id: true,
-            tipo_tramite: true,
-            cliente: {
-              select: {
-                nombre: true,
-                apellido: true
-              }
-            }
+            cliente_id: true,
+            nombre: true,
+            apellido: true,
+            email: true,
+            telefono: true
           }
+        },
+        documento: {
+          orderBy: [
+            { fecha_recibido: 'asc' }, // Pending first
+            { created_at: 'desc' }
+          ]
         }
       }
     });
 
-    console.log(`User ${userId} retrieved ${documentos.length} documents for case ${casoId}`);
-    return res.json(documentos);
+    if (!caso) {
+      return res.status(404).json({
+        message: 'Caso no encontrado o no tienes permisos para verlo'
+      });
+    }
+
+    console.log(`User ${userId} retrieved case details for case ${casoId}`);
+    return res.json(caso);
     
   } catch (err) {
-    console.error('Error getting documents:', err);
-    return res.status(500).json({ message: 'Error obteniendo documentos' });
+    console.error('Error getting case details:', err);
+    return res.status(500).json({ 
+      message: 'Error obteniendo detalles del caso',
+      error: err.message 
+    });
   }
 });
 
@@ -1101,6 +1216,16 @@ app.post('/api/documentos', authRequired, async function(req, res) {
     if (!caso) {
       return res.status(404).json({
         message: 'El caso especificado no existe o no tienes permisos para crear documentos en él'
+      });
+    }
+    
+    // Verificar que el tipo de documento es válido para este proceso
+    const requiredDocs = DOCUMENT_REQUIREMENTS[caso.tipo_tramite] || [];
+    const validDocTypes = requiredDocs.map(doc => doc.documento);
+    
+    if (!validDocTypes.includes(tipo)) {
+      return res.status(400).json({
+        message: `El documento "${tipo}" no es válido para el proceso "${caso.tipo_tramite}". Documentos válidos: ${validDocTypes.join(', ')}`
       });
     }
     
@@ -1142,75 +1267,13 @@ app.post('/api/documentos', authRequired, async function(req, res) {
       }
     });
     
-    console.log(`User ${userId} created document ${newDocument.documento_id} for case ${caso_id}`);
+    console.log(`User ${userId} created document ${newDocument.documento_id} (${tipo}) for case ${caso_id}`);
     return res.status(201).json(newDocument);
     
   } catch (err) {
     console.error('Error creating document:', err);
     return res.status(500).json({
       message: 'Error al crear el documento',
-      error: err.message
-    });
-  }
-});
-
-// API para actualizar un documento (ENHANCED)
-app.put('/api/documentos/:id', authRequired, async function(req, res) {
-  try {
-    const documentoId = parseInt(req.params.id);
-    const userId = req.user.sub;
-    const { tipo, fecha_enviado, fecha_recibido, firma_digital, url_documento } = req.body;
-    
-    if (isNaN(documentoId)) {
-      return res.status(400).json({ message: 'ID de documento inválido' });
-    }
-    
-    // VERIFICAR OWNERSHIP
-    const existingDocument = await verifyDocumentOwnership(documentoId, userId);
-    if (!existingDocument) {
-      return res.status(404).json({
-        message: 'Documento no encontrado o no tienes permisos para modificarlo'
-      });
-    }
-    
-    const updateData = {};
-    if (tipo !== undefined) updateData.tipo = tipo;
-    if (fecha_enviado !== undefined) {
-      updateData.fecha_enviado = fecha_enviado ? new Date(fecha_enviado) : null;
-    }
-    if (fecha_recibido !== undefined) {
-      updateData.fecha_recibido = fecha_recibido ? new Date(fecha_recibido) : null;
-    }
-    if (firma_digital !== undefined) updateData.firma_digital = firma_digital;
-    if (url_documento !== undefined) updateData.url_documento = url_documento;
-    
-    // Auto-update timestamp
-    updateData.updated_at = new Date();
-    
-    const updatedDocument = await prisma.documento.update({
-      where: { documento_id: documentoId },
-      data: updateData,
-      include: {
-        caso: {
-          include: {
-            cliente: {
-              select: {
-                nombre: true,
-                apellido: true
-              }
-            }
-          }
-        }
-      }
-    });
-    
-    console.log(`User ${userId} updated document ${documentoId}`);
-    return res.json(updatedDocument);
-    
-  } catch (err) {
-    console.error('Error updating document:', err);
-    return res.status(500).json({
-      message: 'Error al actualizar el documento',
       error: err.message
     });
   }
@@ -1246,6 +1309,7 @@ app.patch('/api/documentos/:id/recibir', authRequired, async function(req, res) 
       where: { documento_id: documentoId },
       data: { 
         fecha_recibido: new Date(),
+        fecha_enviado: existingDocument.fecha_enviado || new Date(), // Auto-mark as sent if not already
         updated_at: new Date()
       },
       include: {
@@ -1262,7 +1326,7 @@ app.patch('/api/documentos/:id/recibir', authRequired, async function(req, res) 
       }
     });
     
-    console.log(`User ${userId} marked document ${documentoId} as received`);
+    console.log(`User ${userId} marked document ${documentoId} (${existingDocument.tipo}) as received`);
     return res.json(updatedDocument);
     
   } catch (err) {
@@ -1274,7 +1338,106 @@ app.patch('/api/documentos/:id/recibir', authRequired, async function(req, res) 
   }
 });
 
-// API para obtener estadísticas de documentos por caso
+// API para obtener plantilla de documentos requeridos por tipo de trámite (UPDATED)
+app.get('/api/tramites/:tipo/documentos-requeridos', authRequired, async function(req, res) {
+  try {
+    const tipoTramite = decodeURIComponent(req.params.tipo);
+    
+    const documentosRequeridos = DOCUMENT_REQUIREMENTS[tipoTramite] || [];
+    
+    if (documentosRequeridos.length === 0) {
+      return res.status(404).json({
+        message: `No se encontraron documentos requeridos para el tipo de trámite: ${tipoTramite}`,
+        tiposDisponibles: Object.keys(DOCUMENT_REQUIREMENTS)
+      });
+    }
+    
+    return res.json({
+      tipoTramite,
+      documentos: documentosRequeridos,
+      total: documentosRequeridos.length,
+      requeridos: documentosRequeridos.filter(doc => doc.requerido).length,
+      opcionales: documentosRequeridos.filter(doc => !doc.requerido).length
+    });
+    
+  } catch (err) {
+    console.error('Error getting required documents:', err);
+    return res.status(500).json({ message: 'Error obteniendo documentos requeridos' });
+  }
+});
+
+// API para crear múltiples documentos basados en plantilla (UPDATED)
+app.post('/api/casos/:casoId/documentos/desde-plantilla', authRequired, async function(req, res) {
+  try {
+    const casoId = parseInt(req.params.casoId);
+    const userId = req.user.sub;
+    
+    if (isNaN(casoId)) {
+      return res.status(400).json({ message: 'ID de caso inválido' });
+    }
+
+    // VERIFICAR que el caso pertenece al usuario
+    const caso = await verifyCaseOwnership(casoId, userId);
+    if (!caso) {
+      return res.status(404).json({
+        message: 'Caso no encontrado o no tienes permisos para crear documentos en él'
+      });
+    }
+
+    // Get required documents for this case type
+    const requiredDocuments = DOCUMENT_REQUIREMENTS[caso.tipo_tramite] || [];
+    
+    if (requiredDocuments.length === 0) {
+      return res.status(400).json({
+        message: `No hay documentos definidos para el proceso: ${caso.tipo_tramite}`
+      });
+    }
+
+    // Get existing documents to avoid duplicates
+    const existingDocs = await prisma.documento.findMany({
+      where: { caso_id: casoId },
+      select: { tipo: true }
+    });
+
+    const existingTypes = new Set(existingDocs.map(doc => doc.tipo));
+
+    // Create documents that don't already exist
+    const newDocuments = [];
+    const documentsToCreate = requiredDocuments.filter(doc => !existingTypes.has(doc.documento));
+
+    for (const docTemplate of documentsToCreate) {
+      const newDoc = await prisma.documento.create({
+        data: {
+          caso_id: casoId,
+          tipo: docTemplate.documento,
+          fecha_enviado: null,
+          fecha_recibido: null,
+          firma_digital: false
+        }
+      });
+      newDocuments.push(newDoc);
+    }
+
+    console.log(`User ${userId} created ${newDocuments.length} documents from template for case ${casoId} (${caso.tipo_tramite})`);
+    return res.status(201).json({
+      message: `${newDocuments.length} documentos creados desde plantilla`,
+      proceso: caso.tipo_tramite,
+      documentos: newDocuments,
+      existentes: existingDocs.length,
+      nuevos: newDocuments.length,
+      totalRequeridos: requiredDocuments.length
+    });
+    
+  } catch (err) {
+    console.error('Error creating documents from template:', err);
+    return res.status(500).json({
+      message: 'Error creando documentos desde plantilla',
+      error: err.message
+    });
+  }
+});
+
+// API para obtener estadísticas de documentos por caso (UPDATED)
 app.get('/api/casos/:casoId/documentos/stats', authRequired, async function(req, res) {
   try {
     const casoId = parseInt(req.params.casoId);
@@ -1291,6 +1454,10 @@ app.get('/api/casos/:casoId/documentos/stats', authRequired, async function(req,
         message: 'Caso no encontrado o no tienes permisos para ver sus estadísticas'
       });
     }
+
+    // Get required documents count for this process type
+    const requiredDocs = DOCUMENT_REQUIREMENTS[caso.tipo_tramite] || [];
+    const totalRequeridos = requiredDocs.length;
 
     // Obtener estadísticas
     const [total, recibidos, pendientes, enRevision] = await Promise.all([
@@ -1320,11 +1487,14 @@ app.get('/api/casos/:casoId/documentos/stats', authRequired, async function(req,
     ]);
 
     const stats = {
+      proceso: caso.tipo_tramite,
       total,
+      totalRequeridos,
       recibidos,
       pendientes,
       enRevision,
-      porcentajeCompletado: total > 0 ? Math.round((recibidos / total) * 100) : 0
+      porcentajeCompletado: totalRequeridos > 0 ? Math.round((recibidos / totalRequeridos) * 100) : 0,
+      documentosFaltantes: Math.max(0, totalRequeridos - total)
     };
 
     console.log(`User ${userId} retrieved document stats for case ${casoId}:`, stats);
@@ -1336,73 +1506,113 @@ app.get('/api/casos/:casoId/documentos/stats', authRequired, async function(req,
   }
 });
 
-// API para obtener plantilla de documentos requeridos por tipo de trámite
-app.get('/api/tramites/:tipo/documentos-requeridos', authRequired, async function(req, res) {
+// API para obtener todos los procesos disponibles
+app.get('/api/procesos-disponibles', authRequired, async function(req, res) {
   try {
-    const tipoTramite = decodeURIComponent(req.params.tipo);
-    
-    // Document requirements mapping (this should ideally be in a database)
-    const DOCUMENT_REQUIREMENTS = {
-      'Asilo Político': [
-        { tipo: 'Formulario', documento: 'I-589', requerido: true },
-        { tipo: 'Evidencia', documento: 'Declaración personal', requerido: true },
-        { tipo: 'Evidencia', documento: 'Pasaporte', requerido: true },
-        { tipo: 'Evidencia', documento: 'Evidencia persecución', requerido: true },
-        { tipo: 'Evidencia', documento: 'Documentos entrada a EE.UU.', requerido: true },
-        { tipo: 'Evidencia', documento: 'Cartas de apoyo', requerido: false },
-        { tipo: 'Evidencia', documento: 'Informes de país', requerido: false }
-      ],
-      'Residencia Permanente': [
-        { tipo: 'Formulario', documento: 'I-485', requerido: true },
-        { tipo: 'Formulario', documento: 'I-130', requerido: true },
-        { tipo: 'Formulario', documento: 'I-864', requerido: true },
-        { tipo: 'Evidencia', documento: 'Certificado matrimonio', requerido: true },
-        { tipo: 'Evidencia', documento: 'Certificado nacimiento', requerido: true },
-        { tipo: 'Evidencia', documento: 'Pasaporte beneficiario', requerido: true },
-        { tipo: 'Evidencia', documento: 'Pasaporte solicitante', requerido: true },
-        { tipo: 'Evidencia', documento: 'Evidencia relación genuina', requerido: true },
-        { tipo: 'Evidencia', documento: 'Declaraciones de impuestos', requerido: true },
-        { tipo: 'Evidencia', documento: 'Prueba de ingresos patrocinador', requerido: true }
-      ],
-      // Add more process types as needed...
-    };
+    const procesos = Object.keys(DOCUMENT_REQUIREMENTS).map(proceso => ({
+      nombre: proceso,
+      documentosRequeridos: DOCUMENT_REQUIREMENTS[proceso].length,
+      documentosObligatorios: DOCUMENT_REQUIREMENTS[proceso].filter(doc => doc.requerido).length,
+      documentosOpcionales: DOCUMENT_REQUIREMENTS[proceso].filter(doc => !doc.requerido).length
+    }));
 
-    const documentosRequeridos = DOCUMENT_REQUIREMENTS[tipoTramite] || [];
-    
     return res.json({
-      tipoTramite,
-      documentos: documentosRequeridos,
-      total: documentosRequeridos.length,
-      requeridos: documentosRequeridos.filter(doc => doc.requerido).length
+      procesos,
+      total: procesos.length
     });
-    
   } catch (err) {
-    console.error('Error getting required documents:', err);
-    return res.status(500).json({ message: 'Error obteniendo documentos requeridos' });
+    console.error('Error getting available processes:', err);
+    return res.status(500).json({ message: 'Error obteniendo procesos disponibles' });
   }
 });
 
-// API para crear múltiples documentos basados en plantilla
-app.post('/api/casos/:casoId/documentos/desde-plantilla', authRequired, async function(req, res) {
+// API para validar integridad de casos (verificar que todos los casos tengan procesos válidos)
+app.get('/api/casos/validar-procesos', authRequired, async function(req, res) {
+  try {
+    const userId = req.user.sub;
+    
+    // Get all user's cases
+    const casos = await prisma.caso.findMany({
+      where: {
+        cliente: {
+          created_by: userId
+        }
+      },
+      select: {
+        caso_id: true,
+        tipo_tramite: true,
+        cliente: {
+          select: {
+            nombre: true,
+            apellido: true
+          }
+        }
+      }
+    });
+
+    const processosValidos = Object.keys(DOCUMENT_REQUIREMENTS);
+    const casosValidos = [];
+    const casosInvalidos = [];
+
+    casos.forEach(caso => {
+      if (processosValidos.includes(caso.tipo_tramite)) {
+        casosValidos.push(caso);
+      } else {
+        casosInvalidos.push(caso);
+      }
+    });
+
+    return res.json({
+      totalCasos: casos.length,
+      casosValidos: casosValidos.length,
+      casosInvalidos: casosInvalidos.length,
+      processosValidos,
+      casosConProcesosInvalidos: casosInvalidos,
+      mensaje: casosInvalidos.length > 0 
+        ? `${casosInvalidos.length} casos tienen procesos inválidos y necesitan ser actualizados`
+        : 'Todos los casos tienen procesos válidos'
+    });
+    
+  } catch (err) {
+    console.error('Error validating case processes:', err);
+    return res.status(500).json({ message: 'Error validando procesos de casos' });
+  }
+});
+
+// API para actualizar un caso a un proceso válido
+app.patch('/api/casos/:casoId/actualizar-proceso', authRequired, async function(req, res) {
   try {
     const casoId = parseInt(req.params.casoId);
+    const { nuevo_proceso } = req.body;
     const userId = req.user.sub;
     
     if (isNaN(casoId)) {
       return res.status(400).json({ message: 'ID de caso inválido' });
     }
 
+    if (!nuevo_proceso || !DOCUMENT_REQUIREMENTS[nuevo_proceso]) {
+      return res.status(400).json({ 
+        message: 'Proceso inválido. Procesos disponibles: ' + Object.keys(DOCUMENT_REQUIREMENTS).join(', ')
+      });
+    }
+
     // VERIFICAR que el caso pertenece al usuario
     const caso = await verifyCaseOwnership(casoId, userId);
     if (!caso) {
       return res.status(404).json({
-        message: 'Caso no encontrado o no tienes permisos para crear documentos en él'
+        message: 'Caso no encontrado o no tienes permisos para modificarlo'
       });
     }
 
-    // Get case details to determine document requirements
-    const caseDetails = await prisma.caso.findUnique({
+    const procesoAnterior = caso.tipo_tramite;
+
+    // Actualizar el proceso del caso
+    const casoActualizado = await prisma.caso.update({
       where: { caso_id: casoId },
+      data: { 
+        tipo_tramite: nuevo_proceso,
+        updated_at: new Date()
+      },
       include: {
         cliente: {
           select: {
@@ -1413,196 +1623,54 @@ app.post('/api/casos/:casoId/documentos/desde-plantilla', authRequired, async fu
       }
     });
 
-    // Get required documents for this case type
-    const response = await fetch(`${req.protocol}://${req.get('host')}/api/tramites/${encodeURIComponent(caseDetails.tipo_tramite)}/documentos-requeridos`, {
-      headers: {
-        'Cookie': req.headers.cookie
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error('Error obteniendo plantilla de documentos');
-    }
-    
-    const { documentos } = await response.json();
-
-    // Get existing documents to avoid duplicates
-    const existingDocs = await prisma.documento.findMany({
-      where: { caso_id: casoId },
-      select: { tipo: true }
-    });
-
-    const existingTypes = new Set(existingDocs.map(doc => doc.tipo));
-
-    // Create documents that don't already exist
-    const newDocuments = [];
-    const documentsToCreate = documentos.filter(doc => !existingTypes.has(doc.documento));
-
-    for (const docTemplate of documentsToCreate) {
-      const newDoc = await prisma.documento.create({
-        data: {
-          caso_id: casoId,
-          tipo: docTemplate.documento,
-          fecha_enviado: null,
-          fecha_recibido: null,
-          firma_digital: false
-        }
+    // Si el proceso cambió, eliminar documentos existentes y crear nuevos
+    if (procesoAnterior !== nuevo_proceso) {
+      await prisma.documento.deleteMany({
+        where: { caso_id: casoId }
       });
-      newDocuments.push(newDoc);
+
+      // Crear documentos del nuevo proceso
+      const requiredDocuments = DOCUMENT_REQUIREMENTS[nuevo_proceso];
+      const newDocuments = [];
+
+      for (const docTemplate of requiredDocuments) {
+        const newDoc = await prisma.documento.create({
+          data: {
+            caso_id: casoId,
+            tipo: docTemplate.documento,
+            fecha_enviado: null,
+            fecha_recibido: null,
+            firma_digital: false
+          }
+        });
+        newDocuments.push(newDoc);
+      }
+
+      console.log(`User ${userId} updated case ${casoId} process from "${procesoAnterior}" to "${nuevo_proceso}" and created ${newDocuments.length} new documents`);
+
+      return res.json({
+        caso: casoActualizado,
+        procesoAnterior,
+        procesoNuevo: nuevo_proceso,
+        documentosCreados: newDocuments.length,
+        mensaje: `Caso actualizado exitosamente de "${procesoAnterior}" a "${nuevo_proceso}". Se crearon ${newDocuments.length} nuevos documentos.`
+      });
     }
 
-    console.log(`User ${userId} created ${newDocuments.length} documents from template for case ${casoId}`);
-    return res.status(201).json({
-      message: `${newDocuments.length} documentos creados desde plantilla`,
-      documentos: newDocuments,
-      existentes: existingDocs.length,
-      nuevos: newDocuments.length
+    return res.json({
+      caso: casoActualizado,
+      mensaje: 'El caso ya tenía el proceso correcto'
     });
     
   } catch (err) {
-    console.error('Error creating documents from template:', err);
+    console.error('Error updating case process:', err);
     return res.status(500).json({
-      message: 'Error creando documentos desde plantilla',
+      message: 'Error actualizando proceso del caso',
       error: err.message
     });
   }
 });
 
-// API para obtener resumen de documentos del usuario
-app.get('/api/documentos/resumen', authRequired, async function(req, res) {
-  try {
-    const userId = req.user.sub;
-    
-    const [totalDocumentos, documentosRecibidos, documentosPendientes, documentosVencidos] = await Promise.all([
-      // Total documentos del usuario
-      prisma.documento.count({
-        where: {
-          caso: {
-            cliente: { created_by: userId }
-          }
-        }
-      }),
-      
-      // Documentos recibidos
-      prisma.documento.count({
-        where: {
-          caso: {
-            cliente: { created_by: userId }
-          },
-          fecha_recibido: { not: null }
-        }
-      }),
-      
-      // Documentos pendientes
-      prisma.documento.count({
-        where: {
-          caso: {
-            cliente: { created_by: userId }
-          },
-          fecha_recibido: null
-        }
-      }),
-      
-      // Documentos "vencidos" (enviados hace más de 30 días sin recibir)
-      prisma.documento.count({
-        where: {
-          caso: {
-            cliente: { created_by: userId }
-          },
-          fecha_enviado: {
-            lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-          },
-          fecha_recibido: null
-        }
-      })
-    ]);
-
-    const resumen = {
-      totalDocumentos,
-      documentosRecibidos,
-      documentosPendientes,
-      documentosVencidos,
-      porcentajeCompletado: totalDocumentos > 0 ? Math.round((documentosRecibidos / totalDocumentos) * 100) : 0
-    };
-
-    console.log(`User ${userId} document summary:`, resumen);
-    return res.json(resumen);
-    
-  } catch (err) {
-    console.error('Error getting document summary:', err);
-    return res.status(500).json({ message: 'Error obteniendo resumen de documentos' });
-  }
-});
-
-// Función para verificar que un caso pertenece al usuario actual
-async function verifyCaseOwnership(casoId, userId) {
-  try {
-    console.log(`Verifying case ownership: Case ${casoId} for User ${userId}`);
-    
-    const caso = await prisma.caso.findFirst({
-      where: {
-        caso_id: casoId,
-        cliente: {
-          created_by: userId // El caso debe pertenecer a un cliente del usuario
-        }
-      },
-      include: {
-        cliente: {
-          select: {
-            cliente_id: true,
-            nombre: true,
-            apellido: true,
-            created_by: true
-          }
-        }
-      }
-    });
-    
-    console.log(`Case ownership result:`, caso ? 'ALLOWED' : 'DENIED');
-    return caso;
-  } catch (err) {
-    console.error('Error verifying case ownership:', err);
-    return null;
-  }
-}
-
-// Función para verificar que un documento pertenece al usuario actual
-async function verifyDocumentOwnership(documentoId, userId) {
-  try {
-    console.log(`Verifying document ownership: Document ${documentoId} for User ${userId}`);
-    
-    const documento = await prisma.documento.findFirst({
-      where: {
-        documento_id: documentoId,
-        caso: {
-          cliente: {
-            created_by: userId // El documento debe pertenecer a un caso de un cliente del usuario
-          }
-        }
-      },
-      include: {
-        caso: {
-          include: {
-            cliente: {
-              select: {
-                cliente_id: true,
-                nombre: true,
-                apellido: true,
-                created_by: true
-              }
-            }
-          }
-        }
-      }
-    });
-    
-    console.log(`Document ownership result:`, documento ? 'ALLOWED' : 'DENIED');
-    return documento;
-  } catch (err) {
-    console.error('Error verifying document ownership:', err);
-    return null;
-  }
-}
 
 // Función para verificar que un cliente pertenece al usuario actual
 async function verifyClientOwnership(clienteId, userId) {
