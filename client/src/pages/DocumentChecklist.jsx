@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   ArrowLeftIcon,
-  PlusIcon,
   DocumentTextIcon,
   CheckCircleIcon,
   ClockIcon,
   ExclamationTriangleIcon,
   ArrowUpTrayIcon,
-  FolderIcon,
   UserIcon,
   CalendarIcon,
   TagIcon,
@@ -192,6 +190,27 @@ const api = {
       console.error(`PATCH ${endpoint} failed:`, error);
       throw error;
     }
+  },
+
+  // NEW: Upload file function
+  upload: async (endpoint, formData) => {
+    try {
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData // Don't set Content-Type for FormData
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      return { data: result };
+    } catch (error) {
+      console.error(`UPLOAD ${endpoint} failed:`, error);
+      throw error;
+    }
   }
 };
 
@@ -202,8 +221,8 @@ const DocumentChecklist = ({
 }) => {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showInitializeModal, setShowInitializeModal] = useState(false);
-  const [initializing, setInitializing] = useState(false);
+  const [uploadingDocs, setUploadingDocs] = useState(new Set());
+  const fileInputRefs = useRef({});
 
   useEffect(() => {
     if (caseData) {
@@ -257,7 +276,7 @@ const DocumentChecklist = ({
       await api.post('/api/documentos', {
         caso_id: caseData.caso_id,
         tipo: requiredDoc.documento,
-        fecha_enviado: null // Don't auto-mark as sent
+        fecha_enviado: null
       });
       showNotification('success', 'Documento agregado exitosamente');
       loadDocuments();
@@ -267,19 +286,66 @@ const DocumentChecklist = ({
     }
   };
 
-  // Function to initialize all required documents for the case
-  const handleInitializeDocuments = async () => {
+  const handleFileUpload = async (requiredDoc, file) => {
+    if (!file) return;
+
+    // Validate file size (10MB max)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      showNotification('error', 'El archivo es muy grande. Máximo 10MB permitido.');
+      return;
+    }
+
+    // Validate file type
+    const allowedTypes = [
+      'application/pdf',
+      'image/jpeg',
+      'image/png',
+      'image/jpg',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    
+    if (!allowedTypes.includes(file.type)) {
+      showNotification('error', 'Tipo de archivo no permitido. Use PDF, JPG, PNG o DOC.');
+      return;
+    }
+
+    const docKey = requiredDoc.documento;
+    setUploadingDocs(prev => new Set(prev).add(docKey));
+
     try {
-      setInitializing(true);
-      const response = await api.post(`/api/casos/${caseData.caso_id}/documentos/desde-plantilla`);
-      showNotification('success', response.data.message);
-      setShowInitializeModal(false);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('caso_id', caseData.caso_id.toString());
+      formData.append('tipo', requiredDoc.documento);
+      formData.append('cliente_nombre', `${caseData.cliente?.nombre} ${caseData.cliente?.apellido}`.trim());
+
+      const response = await api.upload('/api/documentos/upload', formData);
+      
+      showNotification('success', 'Documento subido exitosamente');
       loadDocuments();
+      
+      // Reset file input
+      if (fileInputRefs.current[docKey]) {
+        fileInputRefs.current[docKey].value = '';
+      }
+      
     } catch (error) {
-      console.error('Error initializing documents:', error);
-      showNotification('error', 'Error al inicializar documentos: ' + error.message);
+      console.error('Error uploading document:', error);
+      showNotification('error', 'Error al subir documento: ' + error.message);
     } finally {
-      setInitializing(false);
+      setUploadingDocs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(docKey);
+        return newSet;
+      });
+    }
+  };
+
+  const triggerFileInput = (docKey) => {
+    if (fileInputRefs.current[docKey]) {
+      fileInputRefs.current[docKey].click();
     }
   };
 
@@ -367,13 +433,6 @@ const DocumentChecklist = ({
               </button>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="flex items-center bg-gray-100 rounded-full px-4 py-2">
-                <input 
-                  type="text" 
-                  placeholder="Search documents..." 
-                  className="bg-transparent border-none outline-none text-sm placeholder-gray-500 w-40"
-                />
-              </div>
               <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
                 <UserIcon className="w-6 h-6 text-purple-600" />
               </div>
@@ -429,16 +488,13 @@ const DocumentChecklist = ({
               <h2 className="text-2xl font-bold text-purple-600">
                 Document Checklist - {caseData.tipo_tramite}
               </h2>
-              <div className="flex space-x-3">
-                <button
-                  onClick={loadDocuments}
-                  className="inline-flex items-center px-3 py-2 bg-gray-50 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <RefreshIcon className="w-4 h-4 mr-2" />
-                  Refresh
-                </button>
-
-              </div>
+              <button
+                onClick={loadDocuments}
+                className="inline-flex items-center px-3 py-2 bg-gray-50 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <RefreshIcon className="w-4 h-4 mr-2" />
+                Refresh
+              </button>
             </div>
 
             {loading ? (
@@ -459,6 +515,7 @@ const DocumentChecklist = ({
                 {requiredDocuments.map((requiredDoc, index) => {
                   const status = getDocumentStatus(requiredDoc);
                   const existingDoc = documents.find(doc => doc.tipo === requiredDoc.documento);
+                  const isUploading = uploadingDocs.has(requiredDoc.documento);
                   
                   return (
                     <div 
@@ -484,6 +541,16 @@ const DocumentChecklist = ({
                               {existingDoc.fecha_recibido && (
                                 <span>Received: {new Date(existingDoc.fecha_recibido).toLocaleDateString()}</span>
                               )}
+                              {existingDoc.url_documento && (
+                                <a 
+                                  href={existingDoc.url_documento} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-blue-500 hover:underline"
+                                >
+                                  View Document
+                                </a>
+                              )}
                             </div>
                           )}
                         </div>
@@ -496,6 +563,7 @@ const DocumentChecklist = ({
                         </div>
 
                         <div className="flex items-center space-x-2">
+                          {/* Mark as Received Button */}
                           {existingDoc && !existingDoc.fecha_recibido && (
                             <button
                               onClick={() => handleMarkAsReceived(existingDoc.documento_id)}
@@ -506,24 +574,43 @@ const DocumentChecklist = ({
                             </button>
                           )}
                           
+                          {/* Add Document Button (only if doesn't exist) */}
                           {!existingDoc && (
                             <button
                               onClick={() => handleAddDocument(requiredDoc)}
                               className="inline-flex items-center px-3 py-1.5 bg-purple-50 text-purple-700 text-sm font-medium rounded-md hover:bg-purple-100 transition-colors"
                             >
-                              <PlusIcon className="w-4 h-4 mr-1" />
-                              Add Document
+                              Create Entry
                             </button>
                           )}
 
-                          <button className="inline-flex items-center px-3 py-1.5 bg-gray-50 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-100 transition-colors">
-                            <ArrowUpTrayIcon className="w-4 h-4 mr-1" />
-                            Upload
-                          </button>
-
-                          <button className="inline-flex items-center px-3 py-1.5 bg-gray-50 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-100 transition-colors">
-                            <FolderIcon className="w-4 h-4" />
-                          </button>
+                          {/* Upload Button */}
+                          <div className="relative">
+                            <input
+                              type="file"
+                              ref={el => fileInputRefs.current[requiredDoc.documento] = el}
+                              onChange={(e) => handleFileUpload(requiredDoc, e.target.files[0])}
+                              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                              className="hidden"
+                            />
+                            <button
+                              onClick={() => triggerFileInput(requiredDoc.documento)}
+                              disabled={isUploading}
+                              className="inline-flex items-center px-3 py-1.5 bg-blue-50 text-blue-700 text-sm font-medium rounded-md hover:bg-blue-100 transition-colors disabled:opacity-50"
+                            >
+                              {isUploading ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700 mr-1"></div>
+                                  Uploading...
+                                </>
+                              ) : (
+                                <>
+                                  <ArrowUpTrayIcon className="w-4 h-4 mr-1" />
+                                  Upload
+                                </>
+                              )}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -561,81 +648,6 @@ const DocumentChecklist = ({
           </div>
         </div>
       </div>
-
-      {/* Initialize Documents Modal */}
-      {showInitializeModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900">
-                    Initialize Documents
-                  </h3>
-                  <button 
-                    type="button" 
-                    onClick={() => setShowInitializeModal(false)} 
-                    className="text-gray-400 hover:text-gray-600 transition-colors duration-150"
-                  >
-                    <XMarkIcon className="h-6 w-6" />
-                  </button>
-                </div>
-                <div className="space-y-4">
-                  <p className="text-sm text-gray-600">
-                    This will create all required documents for the process: <strong>{caseData.tipo_tramite}</strong>
-                  </p>
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <h4 className="text-sm font-medium text-blue-800 mb-2">
-                      Documents to be created ({requiredDocuments.length}):
-                    </h4>
-                    <div className="max-h-40 overflow-y-auto">
-                      <ul className="text-sm text-blue-700 space-y-1">
-                        {requiredDocuments.map((doc, index) => (
-                          <li key={index} className="flex items-center">
-                            <span className="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
-                            {doc.documento} ({doc.tipo})
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    Documents will be created in "pending" status. You can mark them as sent/received individually.
-                  </p>
-                </div>
-              </div>
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button 
-                  type="button" 
-                  onClick={handleInitializeDocuments}
-                  disabled={initializing}
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-purple-600 text-base font-medium text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 sm:ml-3 sm:w-auto sm:text-sm transition-colors duration-200 disabled:opacity-50"
-                >
-                  {initializing ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      <PlusIcon className="w-4 h-4 mr-2" />
-                      Initialize {requiredDocuments.length} Documents
-                    </>
-                  )}
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => setShowInitializeModal(false)} 
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition-colors duration-200"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   PlusIcon, 
   PencilIcon, 
@@ -239,6 +239,25 @@ const api = {
       console.error(`PATCH ${endpoint} failed:`, error);
       throw error;
     }
+  },
+    upload: async (endpoint, formData) => {
+    try {
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData // No establecer Content-Type para FormData
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      return { data: result };
+    } catch (error) {
+      console.error(`UPLOAD ${endpoint} failed:`, error);
+      throw error;
+    }
   }
 };
 
@@ -250,6 +269,8 @@ const DocumentChecklist = ({
 }) => {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [uploadingDocs, setUploadingDocs] = useState(new Set());
+  const fileInputRefs = useRef({});
 
   useEffect(() => {
     if (caseData) {
@@ -303,13 +324,78 @@ const DocumentChecklist = ({
       await api.post('/api/documentos', {
         caso_id: caseData.caso_id,
         tipo: requiredDoc.documento,
-        fecha_enviado: new Date().toISOString().split('T')[0]
+        fecha_enviado: null
       });
       showNotification('success', 'Documento agregado exitosamente');
       loadDocuments();
     } catch (error) {
       console.error('Error adding document:', error);
       showNotification('error', 'Error al agregar documento: ' + error.message);
+    }
+  };
+
+  // NEW: File upload functionality
+  const handleFileUpload = async (requiredDoc, file) => {
+    if (!file) return;
+
+    // Validate file size (10MB max)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      showNotification('error', 'El archivo es muy grande. Máximo 10MB permitido.');
+      return;
+    }
+
+    // Validate file type
+    const allowedTypes = [
+      'application/pdf',
+      'image/jpeg',
+      'image/png',
+      'image/jpg',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    
+    if (!allowedTypes.includes(file.type)) {
+      showNotification('error', 'Tipo de archivo no permitido. Use PDF, JPG, PNG o DOC.');
+      return;
+    }
+
+    const docKey = requiredDoc.documento;
+    setUploadingDocs(prev => new Set(prev).add(docKey));
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('caso_id', caseData.caso_id.toString());
+      formData.append('tipo', requiredDoc.documento);
+      formData.append('cliente_nombre', `${caseData.cliente?.nombre} ${caseData.cliente?.apellido}`.trim());
+
+      // NEW: Upload API call
+      const response = await api.upload('/api/documentos/upload', formData);
+      
+      showNotification('success', 'Documento subido exitosamente');
+      loadDocuments();
+      
+      // Reset file input
+      if (fileInputRefs.current[docKey]) {
+        fileInputRefs.current[docKey].value = '';
+      }
+      
+    } catch (error) {
+      console.error('Error uploading document:', error);
+      showNotification('error', 'Error al subir documento: ' + error.message);
+    } finally {
+      setUploadingDocs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(docKey);
+        return newSet;
+      });
+    }
+  };
+
+  const triggerFileInput = (docKey) => {
+    if (fileInputRefs.current[docKey]) {
+      fileInputRefs.current[docKey].click();
     }
   };
 
@@ -325,8 +411,8 @@ const DocumentChecklist = ({
         await api.post('/api/documentos', {
           caso_id: caseData.caso_id,
           tipo: requiredDoc.documento,
-          fecha_enviado: null, // Initially no date sent
-          fecha_recibido: null  // Initially not received
+          fecha_enviado: null,
+          fecha_recibido: null
         });
       }
       
@@ -368,19 +454,13 @@ const DocumentChecklist = ({
                 className="flex items-center text-purple-600 hover:text-purple-800 font-medium"
               >
                 <ArrowLeftIcon className="w-5 h-5 mr-2" />
+                Back to Cases
               </button>
               <h1 className="text-2xl font-bold text-purple-600 ml-4">
                 Immigration Case Documents
               </h1>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="flex items-center bg-gray-100 rounded-full px-4 py-2">
-                <input 
-                  type="text" 
-                  placeholder="Search..." 
-                  className="bg-transparent border-none outline-none text-sm placeholder-gray-500 w-32"
-                />
-              </div>
               <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
                 <UserIcon className="w-6 h-6 text-purple-600" />
               </div>
@@ -414,6 +494,12 @@ const DocumentChecklist = ({
                 {completedCount}/{requiredDocuments.length}
               </div>
               <div className="text-sm text-gray-500">Documents Complete</div>
+              <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                <div 
+                  className="bg-purple-600 h-2 rounded-full transition-all duration-300" 
+                  style={{ width: `${requiredDocuments.length > 0 ? (completedCount / requiredDocuments.length) * 100 : 0}%` }}
+                ></div>
+              </div>
             </div>
           </div>
         </div>
@@ -435,16 +521,6 @@ const DocumentChecklist = ({
                     Initialize All Documents
                   </button>
                 )}
-                <button
-                  onClick={() => {
-                    // Optional: Add a bulk add documents functionality
-                    showNotification('info', 'Use individual "Add Document" buttons to add specific documents');
-                  }}
-                  className="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors"
-                >
-                  <PlusIcon className="w-4 h-4 mr-2" />
-                  Add New Document
-                </button>
               </div>
             </div>
 
@@ -466,6 +542,7 @@ const DocumentChecklist = ({
                 {requiredDocuments.map((requiredDoc, index) => {
                   const status = getDocumentStatus(requiredDoc);
                   const existingDoc = documents.find(doc => doc.tipo === requiredDoc.documento);
+                  const isUploading = uploadingDocs.has(requiredDoc.documento);
                   
                   return (
                     <div 
@@ -483,6 +560,26 @@ const DocumentChecklist = ({
                           <p className="text-sm text-gray-500">
                             {requiredDoc.tipo}
                           </p>
+                          {existingDoc && (
+                            <div className="flex items-center space-x-4 mt-1 text-xs text-gray-400">
+                              {existingDoc.fecha_enviado && (
+                                <span>Sent: {new Date(existingDoc.fecha_enviado).toLocaleDateString()}</span>
+                              )}
+                              {existingDoc.fecha_recibido && (
+                                <span>Received: {new Date(existingDoc.fecha_recibido).toLocaleDateString()}</span>
+                              )}
+                              {existingDoc.url_documento && (
+                                <a 
+                                  href={existingDoc.url_documento} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-blue-500 hover:underline"
+                                >
+                                  View Document
+                                </a>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -493,6 +590,7 @@ const DocumentChecklist = ({
                         </div>
 
                         <div className="flex items-center space-x-2">
+                          {/* Mark as Received Button */}
                           {existingDoc && !existingDoc.fecha_recibido && (
                             <button
                               onClick={() => handleMarkAsReceived(existingDoc.documento_id)}
@@ -503,24 +601,44 @@ const DocumentChecklist = ({
                             </button>
                           )}
                           
+                          {/* Add Document Button (only if doesn't exist) */}
                           {!existingDoc && (
                             <button
                               onClick={() => handleAddDocument(requiredDoc)}
                               className="inline-flex items-center px-3 py-1.5 bg-purple-50 text-purple-700 text-sm font-medium rounded-md hover:bg-purple-100 transition-colors"
                             >
                               <PlusIcon className="w-4 h-4 mr-1" />
-                              Add Document
+                              Create Entry
                             </button>
                           )}
 
-                          <button className="inline-flex items-center px-3 py-1.5 bg-gray-50 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-100 transition-colors">
-                            <ArrowUpTrayIcon className="w-4 h-4 mr-1" />
-                            Upload
-                          </button>
-
-                          <button className="inline-flex items-center px-3 py-1.5 bg-gray-50 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-100 transition-colors">
-                            <FolderIcon className="w-4 h-4" />
-                          </button>
+                          {/* Upload Button - THE MAIN ONE */}
+                          <div className="relative">
+                            <input
+                              type="file"
+                              ref={el => fileInputRefs.current[requiredDoc.documento] = el}
+                              onChange={(e) => handleFileUpload(requiredDoc, e.target.files[0])}
+                              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                              className="hidden"
+                            />
+                            <button
+                              onClick={() => triggerFileInput(requiredDoc.documento)}
+                              disabled={isUploading}
+                              className="inline-flex items-center px-3 py-1.5 bg-blue-50 text-blue-700 text-sm font-medium rounded-md hover:bg-blue-100 transition-colors disabled:opacity-50"
+                            >
+                              {isUploading ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700 mr-1"></div>
+                                  Uploading...
+                                </>
+                              ) : (
+                                <>
+                                  <ArrowUpTrayIcon className="w-4 h-4 mr-1" />
+                                  Upload
+                                </>
+                              )}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -528,6 +646,33 @@ const DocumentChecklist = ({
                 })}
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Statistics Card */}
+        <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Document Progress</h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="text-center p-4 bg-gray-50 rounded-lg">
+              <div className="text-2xl font-bold text-gray-900">{requiredDocuments.length}</div>
+              <div className="text-sm text-gray-500">Total Required</div>
+            </div>
+            <div className="text-center p-4 bg-green-50 rounded-lg">
+              <div className="text-2xl font-bold text-green-600">{completedCount}</div>
+              <div className="text-sm text-gray-500">Completed</div>
+            </div>
+            <div className="text-center p-4 bg-orange-50 rounded-lg">
+              <div className="text-2xl font-bold text-orange-600">
+                {documents.filter(doc => doc.fecha_enviado && !doc.fecha_recibido).length}
+              </div>
+              <div className="text-sm text-gray-500">In Review</div>
+            </div>
+            <div className="text-center p-4 bg-red-50 rounded-lg">
+              <div className="text-2xl font-bold text-red-600">
+                {requiredDocuments.length - documents.length}
+              </div>
+              <div className="text-sm text-gray-500">Missing</div>
+            </div>
           </div>
         </div>
       </div>

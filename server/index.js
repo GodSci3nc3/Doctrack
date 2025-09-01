@@ -6,6 +6,11 @@ import bcrypt from 'bcrypt';
 import cookieParser from 'cookie-parser';
 import { PrismaClient } from '@prisma/client';
 import { OAuth2Client } from 'google-auth-library';
+import { google } from 'googleapis';
+
+import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
 
 
 const app = express();
@@ -19,7 +24,181 @@ app.use(cookieParser());
 
 // Configuración de Google OAuth
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const client = new OAuth2Client(GOOGLE_CLIENT_ID);
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const REDIRECT_URI = process.env.NODE_ENV === 'production' 
+  ? `${process.env.FRONTEND_URL}/login`
+  : 'http://localhost:5173/login';
+
+const oauth2Client = new OAuth2Client(
+  GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET,
+  REDIRECT_URI
+);
+
+// === GOOGLE DRIVE CONFIGURATION ===
+const GOOGLE_DRIVE_CLIENT_ID = process.env.GOOGLE_DRIVE_CLIENT_ID;
+const GOOGLE_DRIVE_CLIENT_SECRET = process.env.GOOGLE_DRIVE_CLIENT_SECRET;
+const GOOGLE_DRIVE_REFRESH_TOKEN = process.env.GOOGLE_DRIVE_REFRESH_TOKEN;
+const GOOGLE_DRIVE_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID || ''; // Optional: specific folder
+
+
+// Configure Google Drive
+const auth = new google.auth.OAuth2(
+  GOOGLE_DRIVE_CLIENT_ID,
+  GOOGLE_DRIVE_CLIENT_SECRET,
+  'https://developers.google.com/oauthplayground'
+);
+
+auth.setCredentials({
+  refresh_token: GOOGLE_DRIVE_REFRESH_TOKEN
+});
+
+const drive = google.drive({ version: 'v3', auth });
+
+
+// === MULTER CONFIGURATION ===
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = 'uploads/temp/';
+    if (!fs.existsSync(uploadDir)){
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    // Create unique filename
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  // Allowed file types
+  const allowedTypes = [
+    'application/pdf',
+    'image/jpeg',
+    'image/png',
+    'image/jpg',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ];
+  
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Tipo de archivo no permitido'), false);
+  }
+};
+
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: fileFilter
+});
+
+// === HELPER FUNCTIONS ===
+
+// Upload file to Google Drive
+async function uploadToGoogleDrive(filePath, originalName, mimeType, folderName) {
+  try {
+    console.log('Starting Google Drive upload for:', originalName);
+    
+    const fileMetadata = {
+      name: originalName,
+      parents: GOOGLE_DRIVE_FOLDER_ID ? [GOOGLE_DRIVE_FOLDER_ID] : undefined
+    };
+    
+    // If we want to organize by folders, create or find the folder first
+    if (folderName) {
+      const folderId = await getOrCreateFolder(folderName);
+      fileMetadata.parents = [folderId];
+    }
+
+    const media = {
+      mimeType: mimeType,
+      body: fs.createReadStream(filePath)
+    };
+
+    const response = await drive.files.create({
+      requestBody: fileMetadata,
+      media: media,
+      fields: 'id, webViewLink, webContentLink'
+    });
+
+    console.log('Google Drive upload successful:', response.data.id);
+
+    // Make file publicly viewable (optional, adjust permissions as needed)
+    await drive.permissions.create({
+      fileId: response.data.id,
+      requestBody: {
+        role: 'reader',
+        type: 'anyone'
+      }
+    });
+
+    // Clean up temp file
+    fs.unlinkSync(filePath);
+
+    return {
+      fileId: response.data.id,
+      viewLink: response.data.webViewLink,
+      downloadLink: response.data.webContentLink,
+      publicUrl: `https://drive.google.com/file/d/${response.data.id}/view`
+    };
+
+  } catch (error) {
+    console.error('Error uploading to Google Drive:', error);
+    // Clean up temp file even if upload fails
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+    throw error;
+  }
+}
+
+// Get or create folder in Google Drive
+async function getOrCreateFolder(folderName) {
+  try {
+    // First, try to find the folder
+    const response = await drive.files.list({
+      q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      fields: 'files(id, name)'
+    });
+
+    if (response.data.files.length > 0) {
+      return response.data.files[0].id;
+    }
+
+    // If folder doesn't exist, create it
+    const folderMetadata = {
+      name: folderName,
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: GOOGLE_DRIVE_FOLDER_ID ? [GOOGLE_DRIVE_FOLDER_ID] : undefined
+    };
+
+    const folder = await drive.files.create({
+      requestBody: folderMetadata,
+      fields: 'id'
+    });
+
+    return folder.data.id;
+
+  } catch (error) {
+    console.error('Error creating folder:', error);
+    return GOOGLE_DRIVE_FOLDER_ID || null;
+  }
+}
+
+// Generate filename for organization
+function generateFileName(clienteName, casoId, tipoDocumento, originalExtension) {
+  const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  const cleanClientName = clienteName.replace(/[^a-zA-Z0-9]/g, '_');
+  const cleanDocType = tipoDocumento.replace(/[^a-zA-Z0-9]/g, '_');
+  
+  return `${cleanClientName}_Case${casoId}_${cleanDocType}_${timestamp}${originalExtension}`;
+}
 
 // CORS configuration - CORREGIDO
 app.use(cors({
@@ -183,6 +362,7 @@ app.post('/auth/google', async function(req, res) {
     }
 
     console.log('Step 3: Verifying Google token');
+    const client = new OAuth2Client(GOOGLE_CLIENT_ID);
     const ticket = await client.verifyIdToken({
       idToken: credential,
       audience: GOOGLE_CLIENT_ID,
@@ -274,6 +454,127 @@ app.post('/auth/google', async function(req, res) {
     }
     if (err.message.includes('Invalid token')) {
       return res.status(400).json({ message: 'Token de Google inválido' });
+    }
+    
+    return res.status(500).json({ 
+      message: 'Error en autenticación con Google', 
+      error: err.message 
+    });
+  }
+});
+
+// GOOGLE AUTH CALLBACK ENDPOINT (NUEVO)
+app.post('/auth/google/callback', async function(req, res) {
+  console.log('--- GOOGLE AUTH CALLBACK START ---');
+  try {
+    console.log('Step 1: Parsing authorization code');
+    const { code } = req.body || {};
+    
+    if (!code) {
+      console.log('Step 2: No authorization code provided');
+      return res.status(400).json({ message: 'Código de autorización requerido' });
+    }
+
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+      console.error('CRITICAL: Google OAuth credentials not set!');
+      return res.status(500).json({ message: 'Server configuration error' });
+    }
+
+    console.log('Step 3: Exchanging code for tokens');
+    const { tokens } = await oauth2Client.getToken(code);
+    oauth2Client.setCredentials(tokens);
+    
+    console.log('Step 4: Getting user info from Google');
+    const oauth2 = google.oauth2({
+      auth: oauth2Client,
+      version: 'v2'
+    });
+    
+    const { data: googleUser } = await oauth2.userinfo.get();
+    console.log('Step 5: User info retrieved successfully');
+    
+    const {
+      email,
+      given_name: firstName,
+      family_name: lastName,
+      name: fullName,
+      picture: profilePicture,
+      id: googleId
+    } = googleUser;
+
+    console.log('Step 6: Checking if user exists with email:', email);
+    let user = await prisma.usuariointerno.findUnique({ 
+      where: { email } 
+    });
+
+    if (user) {
+      console.log('Step 7: User exists, updating Google info');
+      user = await prisma.usuariointerno.update({
+        where: { email },
+        data: {
+          google_id: googleId,
+          profile_picture: profilePicture,
+          updated_at: new Date()
+        }
+      });
+      console.log('Step 8: Updated existing user with Google info');
+    } else {
+      console.log('Step 7: User does not exist, creating new user');
+      user = await prisma.usuariointerno.create({
+        data: {
+          email,
+          nombre: firstName || fullName || email.split('@')[0],
+          apellido: lastName || '',
+          rol: 'preparador', // Rol por defecto
+          google_id: googleId,
+          profile_picture: profilePicture,
+          contrase_a: null,
+          created_at: new Date(),
+          updated_at: new Date()
+        }
+      });
+      console.log('Step 8: Created new user with Google info');
+    }
+
+    console.log('Step 9: Checking environment variables for JWT');
+    if (!ACCESS_SECRET) {
+      console.error('CRITICAL: JWT_ACCESS_SECRET not set!');
+      return res.status(500).json({ message: 'Server configuration error' });
+    }
+
+    console.log('Step 10: Generating JWT tokens');
+    const accessToken = signAccessToken({ 
+      sub: user.usuario_id, 
+      email: user.email, 
+      role: user.rol 
+    });
+    const refreshToken = signRefreshToken({ sub: user.usuario_id });
+    
+    console.log('Step 11: Setting cookies');
+    setAuthCookies(res, { accessToken, refreshToken });
+    
+    console.log('Step 12: Preparing response');
+    const { 
+      contrase_a: _omit, 
+      google_id: _omit2, 
+      ...safeUser 
+    } = user;
+    
+    console.log('Step 13: Sending successful response');
+    return res.json({ 
+      user: safeUser,
+      isNewUser: !user.updated_at || user.created_at.getTime() === user.updated_at.getTime()
+    });
+
+  } catch (err) {
+    console.error('GOOGLE AUTH CALLBACK error:', err.message);
+    console.error('Full error:', err);
+    
+    if (err.message.includes('invalid_grant')) {
+      return res.status(400).json({ message: 'Código de autorización inválido o expirado' });
+    }
+    if (err.message.includes('redirect_uri_mismatch')) {
+      return res.status(400).json({ message: 'URI de redirección no válida' });
     }
     
     return res.status(500).json({ 
@@ -1797,6 +2098,271 @@ app.patch('/api/casos/:casoId/actualizar-proceso', authRequired, async function(
   }
 });
 
+
+// === UPLOAD ENDPOINT ===
+app.post('/api/documentos/upload', authRequired, upload.single('file'), async function(req, res) {
+  try {
+    console.log('--- DOCUMENT UPLOAD REQUEST START ---');
+    const userId = req.user.sub;
+    const { caso_id, tipo, cliente_nombre } = req.body;
+    
+    console.log('Upload request:', { caso_id, tipo, cliente_nombre, userId });
+    
+    if (!req.file) {
+      console.log('No file provided');
+      return res.status(400).json({ message: 'No se proporcionó archivo' });
+    }
+
+    if (!caso_id || !tipo) {
+      console.log('Missing required fields');
+      return res.status(400).json({ message: 'caso_id y tipo son requeridos' });
+    }
+
+    // VERIFY case ownership
+    const caso = await verifyCaseOwnership(parseInt(caso_id), userId);
+    if (!caso) {
+      console.log('Case ownership verification failed');
+      // Clean up uploaded file
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(404).json({
+        message: 'Caso no encontrado o no tienes permisos para subir documentos'
+      });
+    }
+
+    console.log('Case ownership verified:', caso.caso_id);
+
+    // Validate document type for this process
+    const requiredDocs = DOCUMENT_REQUIREMENTS[caso.tipo_tramite] || [];
+    const validDocTypes = requiredDocs.map(doc => doc.documento);
+    
+    if (!validDocTypes.includes(tipo)) {
+      // Clean up uploaded file
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({
+        message: `El documento "${tipo}" no es válido para el proceso "${caso.tipo_tramite}"`
+      });
+    }
+
+    // Generate organized filename
+    const fileExtension = path.extname(req.file.originalname);
+    const organizedFileName = generateFileName(
+      cliente_nombre || `Cliente_${caso.cliente_id}`,
+      caso_id,
+      tipo,
+      fileExtension
+    );
+
+    console.log('Generated filename:', organizedFileName);
+
+    // Create folder name for organization
+    const folderName = `${cliente_nombre || `Cliente_${caso.cliente_id}`}_Case_${caso_id}`;
+
+    // Upload to Google Drive
+    console.log('Uploading to Google Drive...');
+    const driveResult = await uploadToGoogleDrive(
+      req.file.path,
+      organizedFileName,
+      req.file.mimetype,
+      folderName
+    );
+
+    console.log('Google Drive upload result:', driveResult);
+
+    // Check if document already exists in database
+    let documento = await prisma.documento.findFirst({
+      where: {
+        caso_id: parseInt(caso_id),
+        tipo: tipo
+      }
+    });
+
+    if (documento) {
+      // Update existing document
+      documento = await prisma.documento.update({
+        where: { documento_id: documento.documento_id },
+        data: {
+          url_documento: driveResult.publicUrl,
+          fecha_enviado: new Date(),
+          updated_at: new Date()
+        },
+        include: {
+          caso: {
+            include: {
+              cliente: {
+                select: {
+                  nombre: true,
+                  apellido: true
+                }
+              }
+            }
+          }
+        }
+      });
+      console.log('Updated existing document:', documento.documento_id);
+    } else {
+      // Create new document
+      documento = await prisma.documento.create({
+        data: {
+          caso_id: parseInt(caso_id),
+          tipo: tipo,
+          url_documento: driveResult.publicUrl,
+          fecha_enviado: new Date(),
+          fecha_recibido: null,
+          firma_digital: false
+        },
+        include: {
+          caso: {
+            include: {
+              cliente: {
+                select: {
+                  nombre: true,
+                  apellido: true
+                }
+              }
+            }
+          }
+        }
+      });
+      console.log('Created new document:', documento.documento_id);
+    }
+
+    console.log(`User ${userId} uploaded document ${documento.documento_id} (${tipo}) for case ${caso_id}`);
+
+    return res.status(201).json({
+      message: 'Documento subido exitosamente',
+      documento: documento,
+      driveInfo: {
+        fileId: driveResult.fileId,
+        viewLink: driveResult.viewLink,
+        publicUrl: driveResult.publicUrl
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in document upload:', error);
+    
+    // Clean up temp file if it exists
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    
+    return res.status(500).json({
+      message: 'Error al subir documento',
+      error: error.message
+    });
+  }
+});
+
+// === HELPER FUNCTION FOR CASE OWNERSHIP (add to your existing helper functions) ===
+async function verifyCaseOwnership(casoId, userId) {
+  try {
+    console.log(`Verifying case ownership: Case ${casoId} for User ${userId}`);
+    
+    const caso = await prisma.caso.findFirst({
+      where: {
+        caso_id: casoId,
+        cliente: {
+          created_by: userId
+        }
+      },
+      include: {
+        cliente: {
+          select: {
+            cliente_id: true,
+            nombre: true,
+            apellido: true
+          }
+        }
+      }
+    });
+    
+    console.log(`Case ownership result:`, caso ? 'ALLOWED' : 'DENIED');
+    return caso;
+  } catch (err) {
+    console.error('Error verifying case ownership:', err);
+    return null;
+  }
+}
+
+// === ADDITIONAL ENDPOINT: Get documents for a case (already exists, but ensuring it works with URLs) ===
+app.get('/api/casos/:casoId/documentos', authRequired, async function(req, res) {
+  try {
+    const casoId = parseInt(req.params.casoId);
+    const userId = req.user.sub;
+    
+    if (isNaN(casoId)) {
+      return res.status(400).json({ message: 'ID de caso inválido' });
+    }
+
+    // VERIFY case ownership
+    const caso = await verifyCaseOwnership(casoId, userId);
+    if (!caso) {
+      return res.status(404).json({
+        message: 'Caso no encontrado o no tienes permisos para ver sus documentos'
+      });
+    }
+
+    const documentos = await prisma.documento.findMany({
+      where: { caso_id: casoId },
+      orderBy: [
+        { fecha_recibido: 'asc' }, // Pending first
+        { created_at: 'desc' }
+      ]
+    });
+
+    console.log(`User ${userId} retrieved ${documentos.length} documents for case ${casoId}`);
+    return res.json(documentos);
+    
+  } catch (err) {
+    console.error('Error getting case documents:', err);
+    return res.status(500).json({ 
+      message: 'Error obteniendo documentos del caso',
+      error: err.message 
+    });
+  }
+});
+
+
+// Función para verificar que un documento pertenece al usuario actual
+async function verifyDocumentOwnership(documentoId, userId) {
+  try {
+    console.log(`Verifying document ownership: Document ${documentoId} for User ${userId}`);
+    
+    const documento = await prisma.documento.findFirst({
+      where: {
+        documento_id: documentoId,
+        caso: {
+          cliente: {
+            created_by: userId
+          }
+        }
+      },
+      include: {
+        caso: {
+          include: {
+            cliente: {
+              select: {
+                cliente_id: true,
+                nombre: true,
+                apellido: true
+              }
+            }
+          }
+        }
+      }
+    });
+    
+    console.log(`Document ownership result:`, documento ? 'ALLOWED' : 'DENIED');
+    return documento;
+  } catch (err) {
+    console.error('Error verifying document ownership:', err);
+    return null;
+  }
+}
 
 // Función para verificar que un cliente pertenece al usuario actual
 async function verifyClientOwnership(clienteId, userId) {
