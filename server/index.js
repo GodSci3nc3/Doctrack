@@ -5,13 +5,21 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import cookieParser from 'cookie-parser';
 import { PrismaClient } from '@prisma/client';
+import { OAuth2Client } from 'google-auth-library';
+
 
 const app = express();
 const prisma = new PrismaClient();
 
+
 // === CONFIG GENERAL ===
 app.use(express.json());
 app.use(cookieParser());
+
+
+// Configuración de Google OAuth
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // CORS configuration - CORREGIDO
 app.use(cors({
@@ -154,6 +162,124 @@ app.post('/auth/login', async function(req, res) {
     console.error('LOGIN error at step:', err.message);
     console.error('Full error:', err);
     return res.status(500).json({ message: 'Error en login', error: err.message });
+  }
+});
+
+// GOOGLE AUTH ENDPOINT
+app.post('/auth/google', async function(req, res) {
+  console.log('--- GOOGLE AUTH REQUEST START ---');
+  try {
+    console.log('Step 1: Parsing Google credential');
+    const { credential } = req.body || {};
+    
+    if (!credential) {
+      console.log('Step 2: No credential provided');
+      return res.status(400).json({ message: 'Credential de Google requerido' });
+    }
+
+    if (!GOOGLE_CLIENT_ID) {
+      console.error('CRITICAL: GOOGLE_CLIENT_ID not set!');
+      return res.status(500).json({ message: 'Server configuration error' });
+    }
+
+    console.log('Step 3: Verifying Google token');
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    console.log('Step 4: Token verified successfully');
+    
+    const {
+      email,
+      given_name: firstName,
+      family_name: lastName,
+      name: fullName,
+      picture: profilePicture,
+      sub: googleId
+    } = payload;
+
+    console.log('Step 5: Checking if user exists with email:', email);
+    let user = await prisma.usuariointerno.findUnique({ 
+      where: { email } 
+    });
+
+    if (user) {
+      console.log('Step 6: User exists, updating Google info if needed');
+      // Si el usuario existe pero no tiene googleId, actualizarlo
+      if (!user.google_id) {
+        user = await prisma.usuariointerno.update({
+          where: { email },
+          data: {
+            google_id: googleId,
+            profile_picture: profilePicture,
+            updated_at: new Date()
+          }
+        });
+        console.log('Step 7: Updated existing user with Google info');
+      }
+    } else {
+      console.log('Step 6: User does not exist, creating new user');
+      // Crear nuevo usuario con rol 'preparador' por defecto
+      user = await prisma.usuariointerno.create({
+        data: {
+          email,
+          nombre: firstName || fullName || email.split('@')[0],
+          apellido: lastName || '',
+          rol: 'preparador', // Rol por defecto como solicitaste
+          google_id: googleId,
+          profile_picture: profilePicture,
+          // No establecer contraseña para usuarios de Google
+          contrase_a: null,
+          created_at: new Date(),
+          updated_at: new Date()
+        }
+      });
+      console.log('Step 7: Created new user with Google info');
+    }
+
+    console.log('Step 8: Checking environment variables for JWT');
+    if (!ACCESS_SECRET) {
+      console.error('CRITICAL: JWT_ACCESS_SECRET not set!');
+      return res.status(500).json({ message: 'Server configuration error' });
+    }
+
+    console.log('Step 9: Generating tokens');
+    const accessToken = signAccessToken({ 
+      sub: user.usuario_id, 
+      email: user.email, 
+      role: user.rol 
+    });
+    const refreshToken = signRefreshToken({ sub: user.usuario_id });
+    
+    console.log('Step 10: Setting cookies');
+    setAuthCookies(res, { accessToken, refreshToken });
+    
+    console.log('Step 11: Preparing response');
+    const { contrase_a: _omit, google_id: _omit2, ...safeUser } = user;
+    
+    console.log('Step 12: Sending successful response');
+    return res.json({ 
+      user: safeUser,
+      isNewUser: !user.updated_at || user.created_at === user.updated_at
+    });
+
+  } catch (err) {
+    console.error('GOOGLE AUTH error:', err.message);
+    console.error('Full error:', err);
+    
+    if (err.message.includes('Token used too early')) {
+      return res.status(400).json({ message: 'Token de Google inválido (usado muy temprano)' });
+    }
+    if (err.message.includes('Invalid token')) {
+      return res.status(400).json({ message: 'Token de Google inválido' });
+    }
+    
+    return res.status(500).json({ 
+      message: 'Error en autenticación con Google', 
+      error: err.message 
+    });
   }
 });
 
