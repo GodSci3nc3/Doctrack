@@ -51,23 +51,16 @@ export const menuConfig = [
   {
     category: '📁 Casos Migratorios',
     items: [
-      { id: 'casos-lista', label: 'Lista de casos', icon: BriefcaseIcon, route: '/cases' },
-      { id: 'casos-nuevo', label: 'Nuevo Caso', icon: PlusIcon, route: '/casos/nuevo' }
+      { id: 'casos-lista', label: 'Lista de casos', icon: BriefcaseIcon, route: '/cases' }
     ]
   },
   {
     category: '👤 Clientes',
     items: [
-      { id: 'clientes-lista', label: 'Lista de clientes', icon: UserGroupIcon, route: '/clients' },
-      { id: 'clientes-nuevo', label: 'Nuevo Cliente', icon: PlusIcon, route: '/clientes/nuevo' }
+      { id: 'clientes-lista', label: 'Lista de clientes', icon: UserGroupIcon, route: '/clients' }
     ]
   },
-  {
-    category: '� Documentos',
-    items: [
-      { id: 'documentos-lista', label: 'Listado de documentos', icon: DocumentIcon, route: '/documentos' }
-    ]
-  },
+  
   {
     category: '🚀 Próximamente',
     items: [
