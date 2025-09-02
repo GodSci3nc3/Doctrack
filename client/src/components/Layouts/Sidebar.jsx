@@ -45,63 +45,48 @@ export const menuConfig = [
   {
     category: '🏠 Inicio',
     items: [
-      { id: 'dashboard', label: 'Escritorio', icon: HomeIcon, route: '/dashboard' },
-      { id: 'agenda', label: 'Agenda (en desarrollo)', icon: CalendarIcon, route: '/agenda' }
+      { id: 'dashboard', label: 'Escritorio', icon: HomeIcon, route: '/dashboard' }
     ]
   },
   {
     category: '📁 Casos Migratorios',
     items: [
       { id: 'casos-lista', label: 'Lista de casos', icon: BriefcaseIcon, route: '/cases' },
-      { id: 'casos-nuevo', label: 'Nuevo Caso', icon: PlusIcon, route: '/casos/nuevo' },
-      { id: 'casos-tracking', label: 'Case tracking (en desarrollo)', icon: EyeIcon, route: '/casos/tracking' },
-      { id: 'casos-ia', label: 'Revision IA (en desarrollo)', icon: RobotIcon, route: '/casos/ia' }
+      { id: 'casos-nuevo', label: 'Nuevo Caso', icon: PlusIcon, route: '/casos/nuevo' }
     ]
   },
   {
     category: '👤 Clientes',
     items: [
       { id: 'clientes-lista', label: 'Lista de clientes', icon: UserGroupIcon, route: '/clients' },
-      { id: 'clientes-nuevo', label: 'Nuevo Cliente', icon: PlusIcon, route: '/clientes/nuevo' },
-      { id: 'contratos', label: 'Contratos (en desarrollo)', icon: DocumentDuplicateIcon, route: '/contratos' }
+      { id: 'clientes-nuevo', label: 'Nuevo Cliente', icon: PlusIcon, route: '/clientes/nuevo' }
     ]
   },
   {
-    category: '📄 Documentos',
+    category: '� Documentos',
     items: [
-      { id: 'documentos-lista', label: 'Listado de documentos', icon: DocumentIcon, route: '/documentos' },
-      { id: 'plantillas', label: 'Plantillas y modelos (en desarrollo)', icon: ClipboardDocumentListIcon, route: '/plantillas' }
+      { id: 'documentos-lista', label: 'Listado de documentos', icon: DocumentIcon, route: '/documentos' }
     ]
   },
   {
-    category: '💰 Pagos & Reportes',
+    category: '🚀 Próximamente',
     items: [
+      { id: 'agenda', label: 'Agenda (en desarrollo)', icon: CalendarIcon, route: '/agenda' },
+      { id: 'casos-tracking', label: 'Case tracking (en desarrollo)', icon: EyeIcon, route: '/casos/tracking' },
+      { id: 'casos-ia', label: 'Revision IA (en desarrollo)', icon: RobotIcon, route: '/casos/ia' },
+      { id: 'contratos', label: 'Contratos (en desarrollo)', icon: DocumentDuplicateIcon, route: '/contratos' },
+      { id: 'plantillas', label: 'Plantillas y modelos (en desarrollo)', icon: ClipboardDocumentListIcon, route: '/plantillas' },
       { id: 'pagos-resumen', label: 'Resumen de pagos (en desarrollo)', icon: CurrencyDollarIcon, route: '/pagos' },
       { id: 'detalle-caso', label: 'Detalle caso/cliente (en desarrollo)', icon: ChartBarIcon, route: '/detalle' },
       { id: 'reportes', label: 'Generacion de reportes (en desarrollo)', icon: DocumentTextIcon, route: '/reportes' },
       { id: 'negocios', label: 'Negocios realizados (en desarrollo)', icon: BuildingOfficeIcon, route: '/negocios' },
-      { id: 'correos', label: 'Correos enviados (en desarrollo)', icon: EnvelopeIcon, route: '/correos' }
-    ]
-  },
-  {
-    category: '👥 Usuarios',
-    items: [
+      { id: 'correos', label: 'Correos enviados (en desarrollo)', icon: EnvelopeIcon, route: '/correos' },
       { id: 'usuarios-lista', label: 'Lista de usuarios (en desarrollo)', icon: UsersIcon, route: '/usuarios' },
-      { id: 'usuarios-agregar', label: 'Agregar usuario (en desarrollo)', icon: PlusIcon, route: '/usuarios/nuevo' }
-    ]
-  },
-  {
-    category: '🌐 Sitio Web',
-    items: [
+      { id: 'usuarios-agregar', label: 'Agregar usuario (en desarrollo)', icon: PlusIcon, route: '/usuarios/nuevo' },
       { id: 'servicios', label: 'Servicios (en desarrollo)', icon: GlobeAltIcon, route: '/servicios' },
       { id: 'contenidos', label: 'Contenidos (en desarrollo)', icon: DocumentTextIcon, route: '/contenidos' },
       { id: 'empresa', label: 'Nuestra empresa (en desarrollo)', icon: BuildingOfficeIcon, route: '/empresa' },
-      { id: 'privacidad', label: 'Politicas de privacidad (en desarrollo)', icon: LockClosedIcon, route: '/privacidad' }
-    ]
-  },
-  {
-    category: '🛠️ Configuración',
-    items: [
+      { id: 'privacidad', label: 'Politicas de privacidad (en desarrollo)', icon: LockClosedIcon, route: '/privacidad' },
       { id: 'info-empresa', label: 'Informacion empresa (en desarrollo)', icon: BuildingOfficeIcon, route: '/config/empresa' },
       { id: 'dominio', label: 'Dominio y pagina web (en desarrollo)', icon: GlobeAltIcon, route: '/config/dominio' },
       { id: 'plantillas-web', label: 'Plantillas pagina web (en desarrollo)', icon: DocumentIcon, route: '/config/plantillas-web' },
@@ -109,21 +94,11 @@ export const menuConfig = [
       { id: 'integraciones', label: 'Integraciones (en desarrollo)', icon: Cog6ToothIcon, route: '/config/integraciones' },
       { id: 'ajustes', label: 'Ajustes generales (en desarrollo)', icon: Cog6ToothIcon, route: '/config/ajustes' },
       { id: 'permisos', label: 'Permisos (en desarrollo)', icon: LockClosedIcon, route: '/config/permisos' },
-      { id: 'notificaciones', label: 'Notificaciones (en desarrollo)', icon: BellIcon, route: '/config/notificaciones' }
-    ]
-  },
-  {
-    category: '🧑 Mi cuenta',
-    items: [
+      { id: 'notificaciones', label: 'Notificaciones (en desarrollo)', icon: BellIcon, route: '/config/notificaciones' },
       { id: 'perfil', label: 'Modificar mi perfil (en desarrollo)', icon: UserIcon, route: '/cuenta/perfil' },
       { id: 'password', label: 'Cambiar contraseña (en desarrollo)', icon: LockClosedIcon, route: '/cuenta/password' },
       { id: 'facturacion', label: 'Facturacion (en desarrollo)', icon: CreditCardIcon, route: '/cuenta/facturacion' },
-      { id: 'plan', label: 'Mi plan (en desarrollo)', icon: StarIcon, route: '/cuenta/plan' }
-    ]
-  },
-  {
-    category: '🚀 Próximamente',
-    items: [
+      { id: 'plan', label: 'Mi plan (en desarrollo)', icon: StarIcon, route: '/cuenta/plan' },
       { id: 'academia', label: 'Academia Doctrack (futuro)', icon: AcademicCapIcon, route: '/academia' },
       { id: 'comunidad', label: 'Comunidad Doctrack (futuro)', icon: ChatBubbleLeftRightIcon, route: '/comunidad' },
       { id: 'marketplace', label: 'Marketplace (futuro)', icon: ShoppingBagIcon, route: '/marketplace' },
