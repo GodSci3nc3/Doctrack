@@ -20,7 +20,10 @@ const oauth2Client = new OAuth2Client(
 const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
 
 export const login = async (req, res) => {
-  console.log('--- LOGIN REQUEST START ---');
+  console.log('=== LOGIN REQUEST START ===');
+  console.log('Headers:', req.headers);
+  console.log('Cookies:', req.cookies);
+  
   try {
     console.log('Step 1: Parsing request body');
     const { email, password } = req.body || {};
@@ -65,8 +68,18 @@ export const login = async (req, res) => {
 
     console.log('Step 15: Preparing response');
     const { contrase_a: _omit, ...safeUser } = user;
-    console.log('Step 16: Sending successful response');
-    return res.json({ user: safeUser });
+    
+    // Verificar que las cookies se establecieron correctamente
+    console.log('Step 16: Cookies set in response:', res.getHeaders()['set-cookie']);
+    
+    console.log('Step 17: Sending successful response with auth info');
+    return res.json({ 
+      user: safeUser,
+      auth: {
+        isAuthenticated: true,
+        tokenExpires: new Date(Date.now() + 60 * 60 * 1000).toISOString() // 1 hora
+      }
+    });
   } catch (err) {
     console.error('LOGIN error at step:', err.message);
     console.error('Full error:', err);

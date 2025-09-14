@@ -71,16 +71,21 @@ model contrato {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model documento {
-  documento_id   Int       @id @default(autoincrement())
-  caso_id        Int
-  tipo           String    @db.VarChar(100)
-  fecha_recibido DateTime? @db.Date
-  fecha_enviado  DateTime? @db.Date
-  firma_digital  Boolean?  @default(false)
-  url_documento  String?   @db.VarChar(500)
-  created_at     DateTime? @default(now()) @db.Timestamp(6)
-  updated_at     DateTime? @default(now()) @db.Timestamp(6)
-  caso           caso      @relation(fields: [caso_id], references: [caso_id], onDelete: Cascade, map: "fk_documento_caso")
+  documento_id           Int       @id @default(autoincrement())
+  caso_id                Int
+  tipo                   String    @db.VarChar(100)
+  nombre_personalizado   String?   @db.VarChar(200)  // NUEVA
+  nombre_archivo_original String?  @db.VarChar(200)  // NUEVA
+  ruta_storage           String?   @db.VarChar(500)  // NUEVA
+  tamaño_bytes           Int?                        // NUEVA
+  tipo_archivo           String?   @db.VarChar(50)   // NUEVA
+  fecha_recibido         DateTime? @db.Date
+  fecha_enviado          DateTime? @db.Date
+  firma_digital          Boolean?  @default(false)
+  url_documento          String?   @db.VarChar(500)
+  created_at             DateTime? @default(now()) @db.Timestamp(6)
+  updated_at             DateTime? @default(now()) @db.Timestamp(6)
+  caso                   caso      @relation(fields: [caso_id], references: [caso_id], onDelete: Cascade, map: "fk_documento_caso")
 
   @@index([caso_id], map: "idx_documento_caso")
   @@index([tipo], map: "idx_documento_tipo")

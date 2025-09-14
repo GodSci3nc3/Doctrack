@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import multer from 'multer';
 
 // Import configurations and middleware
 import { testDatabaseConnection } from './config/database.js';
@@ -18,43 +19,72 @@ import * as utilityController from './controllers/utilityController.js';
 
 const app = express();
 
+// === MULTER CONFIG FOR SUPABASE ===
+const supabaseUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB límite
+  },
+  fileFilter: (req, file, cb) => {
+    // Tipos de archivo permitidos
+    const allowedMimeTypes = [
+      'application/pdf',
+      'image/jpeg',
+      'image/png',
+      'image/jpg',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Tipo de archivo no permitido'), false);
+    }
+  }
+});
+
 // === GENERAL CONFIG ===
-app.use(express.json());
 app.use(cookieParser());
 
-// CORS configuration
+// Log all requests
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  console.log('Headers:', req.headers);
+  next();
+});
+
+// Configuración CORS unificada
+const isProduction = process.env.NODE_ENV === 'production';
+const allowedOrigins = isProduction
+  ? ['https://doctrack-0jp0.onrender.com', 'https://doctrack.vercel.app']
+  : ['http://localhost:5173'];
+
 app.use(cors({
-  origin: [
-    'https://doctrack-phnt.vercel.app',
-    'http://localhost:5173'
-  ],
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, origin);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: [
-    'Content-Type', 
-    'Authorization', 
-    'Cookie', 
-    'Set-Cookie',
-    'Access-Control-Allow-Credentials',
-    'Access-Control-Allow-Origin'
-  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie', 'Set-Cookie'],
   exposedHeaders: ['Set-Cookie'],
   optionsSuccessStatus: 200
 }));
 
-// Additional CORS middleware
-app.use(function(req, res, next) {
-  const origin = req.headers.origin;
-  if (origin === 'https://doctrack-phnt.vercel.app' || origin === 'http://localhost:5173') {
-    res.header('Access-Control-Allow-Origin', origin);
-  }
+app.use(express.json({ limit: '10mb' })); // Aumentar límite para archivos
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Eliminar configuraciones redundantes
+app.options('*', cors()); // Pre-flight requests
+
+// Middleware para seguridad adicional
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin);
   res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,Cookie,Set-Cookie');
-  
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
   next();
 });
 
@@ -64,11 +94,23 @@ app.use(function(req, res, next) {
   next();
 });
 
+// Middleware para registrar todas las solicitudes
+app.use((req, res, next) => {
+  console.log(`Solicitud recibida: ${req.method} ${req.url}`);
+  console.log('Cabeceras:', req.headers);
+  next();
+});
+
 // === ROUTES ===
 
 // Health check
 app.get('/health', function(_req, res) {
-  res.json({ ok: true, service: 'Doctrack API', env: process.env.NODE_ENV || 'development' });
+  res.json({ 
+    ok: true, 
+    service: 'Doctrack API', 
+    env: process.env.NODE_ENV || 'development',
+    supabase_configured: !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
+  });
 });
 
 // === AUTH ROUTES ===
@@ -98,20 +140,52 @@ app.post('/api/casos', authRequired, caseController.createCase);
 app.put('/api/casos/:id', authRequired, caseController.updateCase);
 app.delete('/api/casos/:id', authRequired, caseController.deleteCase);
 
-// === DOCUMENT ROUTES ===
+// === DOCUMENT ROUTES (UPDATED WITH SUPABASE STORAGE) ===
+// CRUD de documentos
 app.post('/api/documentos', authRequired, documentController.createDocument);
+app.put('/api/documentos/:id', authRequired, documentController.updateDocument);
+app.delete('/api/documentos/:id', authRequired, documentController.deleteDocument);
 app.patch('/api/documentos/:id/recibir', authRequired, documentController.markDocumentReceived);
+
+// Subida y descarga de archivos con Supabase
+app.post('/api/documentos/upload', authRequired, supabaseUpload.single('file'), documentController.uploadDocument);
+app.get('/api/documentos/:id/file', authRequired, documentController.getDocumentFile);
+
+// Consultas de documentos
+app.get('/api/documentos/casos/:casoId', authRequired, documentController.getCaseDocuments);
+app.get('/api/documentos/casos/:casoId/stats', authRequired, documentController.getDocumentStats);
+app.get('/api/documentos/requeridos/:tipo', authRequired, documentController.getRequiredDocuments);
+
+// RUTAS LEGACY (mantenidas por compatibilidad)
 app.get('/api/tramites/:tipo/documentos-requeridos', authRequired, documentController.getRequiredDocuments);
-app.post('/api/casos/:casoId/documentos/desde-plantilla', authRequired, documentController.createDocumentsFromTemplate);
+//app.post('/api/casos/:casoId/documentos/desde-plantilla', authRequired, documentController.createDocumentsFromTemplate);
 app.get('/api/casos/:casoId/documentos/stats', authRequired, documentController.getDocumentStats);
 app.get('/api/casos/:casoId/documentos', authRequired, documentController.getCaseDocuments);
-app.post('/api/documentos/upload', authRequired, upload.single('file'), documentController.uploadDocument);
 
 // === UTILITY ROUTES ===
 app.get('/api/procesos-disponibles', authRequired, utilityController.getAvailableProcesses);
 app.get('/api/casos/validar-procesos', authRequired, utilityController.validateCaseProcesses);
 app.patch('/api/casos/:casoId/actualizar-proceso', authRequired, utilityController.updateCaseProcess);
 app.get('/api/debug/tables', authRequired, utilityController.debugTables);
+
+// === MULTER ERROR HANDLING ===
+app.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        message: 'El archivo es muy grande. Tamaño máximo: 10MB'
+      });
+    }
+  }
+  
+  if (error.message === 'Tipo de archivo no permitido') {
+    return res.status(400).json({
+      message: 'Tipo de archivo no permitido. Use PDF, JPG, PNG o DOC.'
+    });
+  }
+  
+  next(error);
+});
 
 // Catch-all route for unmatched requests
 app.all('*', function(req, res) {
@@ -132,7 +206,9 @@ app.all('*', function(req, res) {
       '/api/dashboard/checklist-pendientes',
       '/api/clientes',
       '/api/casos',
-      '/api/documentos'
+      '/api/documentos',
+      '/api/documentos/upload',
+      '/api/documentos/casos/:casoId'
     ],
     timestamp: new Date().toISOString()
   });
@@ -148,12 +224,22 @@ app.use(function(err, req, res, next) {
   });
 });
 
+// === CONFIGURACIÓN DE VARIABLES DE ENTORNO ===
+const requiredEnvVars = ['DATABASE_URL', 'JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET'];
+requiredEnvVars.forEach((envVar) => {
+  if (!process.env[envVar]) {
+    console.error(`⚠️ La variable de entorno ${envVar} no está configurada. La aplicación podría no funcionar correctamente.`);
+  }
+});
+
 // Environment validation on startup
 console.log('=== ENVIRONMENT VARIABLES ===');
 console.log('DATABASE_URL:', process.env.DATABASE_URL ? '[SET]' : '[NOT SET]');
 console.log('DIRECT_URL:', process.env.DIRECT_URL ? '[SET]' : '[NOT SET]');
 console.log('JWT_ACCESS_SECRET:', process.env.JWT_ACCESS_SECRET ? '[SET]' : '[NOT SET]');
 console.log('JWT_REFRESH_SECRET:', process.env.JWT_REFRESH_SECRET ? '[SET]' : '[NOT SET]');
+console.log('SUPABASE_URL:', process.env.SUPABASE_URL ? '[SET]' : '[NOT SET]');
+console.log('SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? '[SET]' : '[NOT SET]');
 console.log('NODE_ENV:', process.env.NODE_ENV || 'development');
 console.log('================================');
 
@@ -161,9 +247,19 @@ console.log('================================');
 testDatabaseConnection();
 
 // === START SERVER ===
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, function() {
+const PORT = process.env.PORT || 3001;
+const server = app.listen(PORT, () => {
   console.log(`🚀 Doctrack API escuchando en puerto ${PORT}`);
-  console.log(`🌐 Server available at: https://doctrack-0jp0.onrender.com`);
 });
-    
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`⚠️ El puerto ${PORT} está en uso. Intentando con otro puerto...`);
+    const newPort = parseInt(PORT) + 1;
+    server.listen(newPort, () => {
+      console.log(`🚀 Doctrack API ahora escuchando en puerto ${newPort}`);
+    });
+  } else {
+    console.error('Error inesperado en el servidor:', err);
+  }
+});

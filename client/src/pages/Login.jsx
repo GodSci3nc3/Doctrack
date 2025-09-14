@@ -17,16 +17,20 @@ const Login = () => {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
 
-  const API_URL = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+  // Use proxy in development for same-origin requests to enable cookies
+  const API_URL = import.meta.env.MODE === 'development'
+    ? ''
+    : import.meta.env?.VITE_API_URL || '';
+
   const GOOGLE_CLIENT_ID = import.meta.env?.VITE_GOOGLE_CLIENT_ID;
 
   // Función para actualizar el estado de autenticación
   const updateAuthState = (user) => {
-    localStorage.setItem('user', JSON.stringify(user));
-    localStorage.setItem('authToken', 'authenticated');
+    // Solo almacenamos la información no sensible del usuario
+    sessionStorage.setItem('user', JSON.stringify(user));
     
-    // Forzar recarga completa para asegurar que la app reconozca el cambio
-    window.location.href = '/dashboard';
+    // Usar navigate para redirección sin recargar la página
+    navigate('/dashboard', { replace: true });
   };
 
   // Manejar el código de autorización de Google cuando regrese
@@ -172,9 +176,40 @@ const Login = () => {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Login response:', data);
         
         if (data.user) {
-          updateAuthState(data.user);
+          try {
+            // Guardar info del usuario en sessionStorage
+            sessionStorage.setItem('user', JSON.stringify(data.user));
+            
+            // Esperar un momento para asegurarse de que las cookies se establezcan
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Verificar que las cookies se establecieron correctamente
+            console.log('Verificando sesión...');
+            const verifyResponse = await fetch(`${API_URL}/api/auth/profile`, {
+              method: 'GET',
+              credentials: 'include',
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (verifyResponse.ok) {
+              console.log('Sesión verificada correctamente');
+              window.dispatchEvent(new Event('authChange'));
+              navigate('/dashboard', { replace: true });
+            } else {
+              const errorData = await verifyResponse.json();
+              console.error('Error en verificación:', errorData);
+              throw new Error('Falló la verificación de la sesión');
+            }
+          } catch (error) {
+            console.error('Error en el proceso de login:', error);
+            setLoginError('Error al establecer la sesión. Por favor, intenta de nuevo.');
+          }
         } else {
           setLoginError('Error: No se recibieron datos del usuario');
         }

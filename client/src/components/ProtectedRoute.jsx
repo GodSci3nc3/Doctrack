@@ -13,23 +13,25 @@ const useAuth = () => {
   useEffect(() => {
     const loadUserData = async () => {
       try {
-        const token = localStorage.getItem('authToken');
-        const userData = localStorage.getItem('user');
-
-        if (!token) {
-          setIsLoading(false);
-          return;
+        // Intentar cargar el usuario del sessionStorage
+        const cachedUser = sessionStorage.getItem('user');
+        if (cachedUser) {
+          setCurrentUser(JSON.parse(cachedUser));
         }
 
-        if (userData) {
-          try {
-            const user = JSON.parse(userData);
-            setCurrentUser(user);
-          } catch (error) {
-            console.error('Error parsing user data:', error);
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('user');
-          }
+        // Verificar la autenticación con el servidor
+        const response = await fetch(`${API_URL}/api/auth/profile`, {
+          credentials: 'include'  // Importante para enviar las cookies
+        });
+
+        if (response.ok) {
+          const { user } = await response.json();
+          setCurrentUser(user);
+          sessionStorage.setItem('user', JSON.stringify(user));
+        } else {
+          // Si el servidor dice que no estamos autenticados, limpiar todo
+          setCurrentUser(null);
+          sessionStorage.removeItem('user');
         }
 
         // Verificar el token con el servidor
@@ -50,10 +52,18 @@ const useAuth = () => {
           }
         } catch (error) {
           console.error('Error verifying token:', error);
+          // En caso de error de verificación, limpiar el estado
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('user');
+          setCurrentUser(null);
         }
 
       } catch (error) {
         console.error('Error loading user data:', error);
+        // En caso de error general, limpiar el estado
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        setCurrentUser(null);
       } finally {
         setIsLoading(false);
       }
@@ -81,9 +91,19 @@ const useAuth = () => {
     };
   }, []);
 
-  const logout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
+  const logout = async () => {
+    try {
+      // Llamar al endpoint de logout para limpiar las cookies
+      await fetch(`${API_URL}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
+    
+    // Limpiar el estado local
+    sessionStorage.removeItem('user');
     setCurrentUser(null);
     window.dispatchEvent(new Event('authChange'));
   };
@@ -108,12 +128,24 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
-  // Redirigir al login si no está autenticado
-  if (!currentUser) {
+  // Solo redirigir si no estamos cargando y no hay usuario
+  if (!isLoading && !currentUser) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Renderizar el contenido protegido
+  // Si estamos cargando, mostrar el spinner
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Verificando autenticación...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Si hay usuario, renderizar el contenido protegido
   return children;
 };
 

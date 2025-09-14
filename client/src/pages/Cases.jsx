@@ -281,8 +281,11 @@ const DocumentChecklist = ({
   const loadDocuments = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/api/casos/${caseData.caso_id}/documentos`);
-      setDocuments(response.data || []);
+  const response = await api.get(`/api/casos/${caseData.caso_id}/documentos`);
+  // Defensive: always assign an array
+  const docs = Array.isArray(response.data.documentos) ? response.data.documentos : (Array.isArray(response.data) ? response.data : []);
+  setDocuments(docs);
+  console.log('[CASES] setDocuments:', docs, 'typeof:', typeof docs, 'isArray:', Array.isArray(docs));
     } catch (error) {
       console.error('Error loading documents:', error);
       showNotification('error', 'Error al cargar documentos: ' + error.message);
@@ -293,7 +296,10 @@ const DocumentChecklist = ({
   };
 
   const getDocumentStatus = (requiredDoc) => {
-    const existingDoc = documents.find(doc => 
+    // Defensive log
+    console.log('[CASES] getDocumentStatus documents:', documents, 'typeof:', typeof documents, 'isArray:', Array.isArray(documents));
+    const safeDocs = Array.isArray(documents) ? documents : [];
+    const existingDoc = safeDocs.find(doc => 
       doc.tipo === requiredDoc.documento
     );
     
