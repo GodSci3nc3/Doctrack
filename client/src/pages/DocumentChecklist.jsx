@@ -395,11 +395,15 @@ const DocumentChecklist = ({
   };
 
   const handleFileUpload = async (requiredDoc, file, existingDoc = null) => {
-    if (!file) return;
+    if (!file) {
+      showNotification('error', 'No se seleccionó ningún archivo.');
+      return;
+    }
 
     const maxSize = 10 * 1024 * 1024; // 10MB
     if (file.size > maxSize) {
       showNotification('error', 'El archivo es muy grande. Máximo 10MB permitido.');
+      if (fileInputRefs.current[requiredDoc.documento]) fileInputRefs.current[requiredDoc.documento].value = '';
       return;
     }
 
@@ -411,9 +415,9 @@ const DocumentChecklist = ({
       'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     ];
-    
     if (!allowedTypes.includes(file.type)) {
       showNotification('error', 'Tipo de archivo no permitido. Use PDF, JPG, PNG o DOC.');
+      if (fileInputRefs.current[requiredDoc.documento]) fileInputRefs.current[requiredDoc.documento].value = '';
       return;
     }
 
@@ -429,18 +433,13 @@ const DocumentChecklist = ({
       formData.append('cliente_nombre', `${caseData.cliente?.nombre} ${caseData.cliente?.apellido}`.trim());
 
       const response = await api.upload('/api/documentos/upload', formData);
-      
       showNotification('success', 'Documento subido exitosamente');
-      loadDocuments();
-      
-      if (fileInputRefs.current[docKey]) {
-        fileInputRefs.current[docKey].value = '';
-      }
-      
+      await loadDocuments();
     } catch (error) {
       console.error('Error uploading document:', error);
-      showNotification('error', 'Error al subir documento: ' + error.message);
+      showNotification('error', 'Error al subir documento: ' + (error?.message || 'Error desconocido'));
     } finally {
+      if (fileInputRefs.current[docKey]) fileInputRefs.current[docKey].value = '';
       setUploadingDocs(prev => {
         const newSet = new Set(prev);
         newSet.delete(docKey);

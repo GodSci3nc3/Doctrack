@@ -276,6 +276,8 @@ export const markDocumentReceived = async (req, res) => {
 };
 
 export const uploadDocument = async (req, res) => {
+  // Log para depuración del archivo recibido
+  console.log('DEBUG req.file:', req.file);
   try {
     const { caso_id, tipo, nombre_personalizado, cliente_nombre } = req.body;
     const userId = req.user.sub;
@@ -335,28 +337,26 @@ export const uploadDocument = async (req, res) => {
     // Obtener URL firmada para acceso inmediato
     const signedUrl = await supabaseStorage.getSignedUrl(storagePath, 86400); // 24 horas
 
-    // Verificar si ya existe un documento de este tipo y actualizarlo, o crear uno nuevo
-    let documento;
-    const existingDoc = await prisma.documento.findFirst({
+    // Buscar el metadato (slot) del documento
+    let documento = await prisma.documento.findFirst({
       where: {
         caso_id: parseInt(caso_id),
         tipo: tipo
       }
     });
 
-    if (existingDoc) {
-      // Eliminar archivo anterior si existe
-      if (existingDoc.ruta_storage) {
+    if (documento) {
+      // Si ya existe el metadato, elimina el archivo anterior si existe
+      if (documento.ruta_storage) {
         try {
-          await supabaseStorage.deleteFile(existingDoc.ruta_storage);
+          await supabaseStorage.deleteFile(documento.ruta_storage);
         } catch (deleteError) {
           console.error('Error deleting previous file:', deleteError);
         }
       }
-
-      // Actualizar documento existente
+      // Actualiza los campos de archivo y metadatos
       documento = await prisma.documento.update({
-        where: { documento_id: existingDoc.documento_id },
+        where: { documento_id: documento.documento_id },
         data: {
           nombre_personalizado: nombre_personalizado || tipo,
           nombre_archivo_original: req.file.originalname,
@@ -382,7 +382,7 @@ export const uploadDocument = async (req, res) => {
         }
       });
     } else {
-      // Crear nuevo documento
+      // Si no existe el metadato, créalo y asocia el archivo
       documento = await prisma.documento.create({
         data: {
           caso_id: parseInt(caso_id),
