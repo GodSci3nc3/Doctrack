@@ -20,6 +20,15 @@ const Login = () => {
   const API_URL = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
   const GOOGLE_CLIENT_ID = import.meta.env?.VITE_GOOGLE_CLIENT_ID;
 
+  // Función para actualizar el estado de autenticación
+  const updateAuthState = (user) => {
+    localStorage.setItem('user', JSON.stringify(user));
+    localStorage.setItem('authToken', 'authenticated');
+    
+    // Forzar recarga completa para asegurar que la app reconozca el cambio
+    window.location.href = '/dashboard';
+  };
+
   // Manejar el código de autorización de Google cuando regrese
   useEffect(() => {
     const code = searchParams.get('code');
@@ -49,14 +58,10 @@ const Login = () => {
         const data = await response.json();
         
         if (data.user) {
-          localStorage.setItem('user', JSON.stringify(data.user));
-          localStorage.setItem('authToken', 'authenticated');
+          updateAuthState(data.user);
+        } else {
+          setLoginError('Error: No se recibieron datos del usuario');
         }
-        
-        window.dispatchEvent(new Event('authChange'));
-        
-        // Limpiar los parámetros de la URL
-        navigate('/dashboard', { replace: true });
         
       } else {
         const errorData = await response.json().catch(() => ({ message: 'Error en el servidor' }));
@@ -84,8 +89,8 @@ const Login = () => {
       'openid',
       'profile', 
       'email',
-      'https://www.googleapis.com/auth/drive.file', // Para subir archivos a Drive
-      'https://www.googleapis.com/auth/drive.readonly' // Para leer archivos si necesitas
+      'https://www.googleapis.com/auth/drive.file',
+      'https://www.googleapis.com/auth/drive.readonly'
     ].join(' ');
 
     const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
@@ -169,12 +174,10 @@ const Login = () => {
         const data = await response.json();
         
         if (data.user) {
-          localStorage.setItem('user', JSON.stringify(data.user));
-          localStorage.setItem('authToken', 'authenticated');
+          updateAuthState(data.user);
+        } else {
+          setLoginError('Error: No se recibieron datos del usuario');
         }
-        
-        window.dispatchEvent(new Event('authChange'));
-        navigate('/dashboard');
         
       } else {
         const errorData = await response.json().catch(() => ({ message: 'Error en el servidor' }));
