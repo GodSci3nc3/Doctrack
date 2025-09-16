@@ -268,6 +268,8 @@ const DocumentChecklist = ({
   showNotification 
 }) => {
   const [documents, setDocuments] = useState([]);
+  const [manualDocuments, setManualDocuments] = useState([]);
+  const [newDoc, setNewDoc] = useState({ nombre: '', tipo: '', archivo: null, notas: '' });
   const [loading, setLoading] = useState(true);
   const [uploadingDocs, setUploadingDocs] = useState(new Set());
   const fileInputRefs = useRef({});
@@ -275,8 +277,63 @@ const DocumentChecklist = ({
   useEffect(() => {
     if (caseData) {
       loadDocuments();
+      // Si el trámite no está en la lista, inicia vacía
+      if (!DOCUMENT_REQUIREMENTS[caseData.tipo_tramite]) {
+        setDocuments([]);
+      }
     }
   }, [caseData]);
+
+  // Añadir documento manual
+  const handleAddManualDocument = async () => {
+    if (!newDoc.nombre.trim() || !newDoc.tipo.trim() || !newDoc.archivo) {
+      showNotification('error', 'Completa todos los campos y selecciona un archivo');
+      return;
+    }
+    try {
+      const formData = new FormData();
+      formData.append('file', newDoc.archivo);
+      formData.append('caso_id', caseData.caso_id.toString());
+      formData.append('tipo', newDoc.tipo);
+      formData.append('nombre', newDoc.nombre);
+      formData.append('notas', newDoc.notas);
+      formData.append('cliente_nombre', `${caseData.cliente?.nombre} ${caseData.cliente?.apellido}`.trim());
+      await api.upload('/api/documentos/upload', formData);
+      showNotification('success', 'Documento manual agregado');
+      setNewDoc({ nombre: '', tipo: '', archivo: null, notas: '' });
+      loadDocuments();
+    } catch (error) {
+      showNotification('error', 'Error al agregar documento: ' + error.message);
+    }
+  };
+
+  // Render para añadir documento manual (scope principal)
+  function renderManualDocumentForm() {
+    return (
+      <div className="bg-white rounded-lg shadow p-4 mb-4 border border-gray-200">
+        <h4 className="font-semibold mb-2 text-gray-800">Añadir documento manual</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Nombre</label>
+            <input type="text" className="w-full border rounded px-2 py-1" value={newDoc.nombre} onChange={e => setNewDoc(d => ({ ...d, nombre: e.target.value }))} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Tipo</label>
+            <input type="text" className="w-full border rounded px-2 py-1" value={newDoc.tipo} onChange={e => setNewDoc(d => ({ ...d, tipo: e.target.value }))} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Archivo</label>
+            <input type="file" className="w-full" onChange={e => setNewDoc(d => ({ ...d, archivo: e.target.files[0] }))} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Notas</label>
+            <input type="text" className="w-full border rounded px-2 py-1" value={newDoc.notas} onChange={e => setNewDoc(d => ({ ...d, notas: e.target.value }))} />
+          </div>
+        </div>
+        <button onClick={handleAddManualDocument} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Agregar documento</button>
+      </div>
+    );
+  }
 
   const loadDocuments = async () => {
     try {
@@ -450,6 +507,14 @@ const DocumentChecklist = ({
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {renderManualDocumentForm()}
+      {(!documents || documents.length === 0) && (
+        <div className="text-center py-8">
+          <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No hay documentos en este caso</h3>
+          <p className="mt-1 text-sm text-gray-500">Agrega documentos manualmente usando el formulario superior.</p>
+        </div>
+      )}
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -748,9 +813,7 @@ const Cases = () => {
       
       if (clientsRes.status === 'fulfilled') {
         let clientsData = [];
-        if (clientsRes.value.data && Array.isArray(clientsRes.value.data.clientes)) {
-          clientsData = clientsRes.value.data.clientes;
-        } else if (Array.isArray(clientsRes.value.data)) {
+        if (Array.isArray(clientsRes.value.data)) {
           clientsData = clientsRes.value.data;
         }
         setClients(clientsData);
