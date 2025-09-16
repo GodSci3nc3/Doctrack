@@ -57,17 +57,15 @@ app.use((req, res, next) => {
 // Configuración CORS unificada
 const isProduction = process.env.NODE_ENV === 'production';
 const allowedOrigins = isProduction
-  ? ['https://doctrack-0jp0.onrender.com', 'https://doctrack.vercel.app']
+  ? [
+      'https://doctrack-0jp0.onrender.com',
+      'https://doctrack-frontend-fehq.onrender.com',
+      'https://doctrack.vercel.app'
+    ]
   : ['http://localhost:5173'];
 
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, origin);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie', 'Set-Cookie'],
@@ -78,15 +76,8 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' })); // Aumentar límite para archivos
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Eliminar configuraciones redundantes
-app.options('*', cors()); // Pre-flight requests
 
-// Middleware para seguridad adicional
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin);
-  res.header('Access-Control-Allow-Credentials', 'true');
-  next();
-});
+// Eliminar configuraciones redundantes y cabeceras manuales para evitar conflictos
 
 // Debug middleware
 app.use(function(req, res, next) {
