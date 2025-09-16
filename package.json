@@ -14,10 +14,10 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.0",
-    "electron": "^29.0.0", 
-    "electron-builder": "^24.12.0"
+    "electron": "^29.0.0",
+    "electron-builder": "^24.12.0",
+    "prisma": "^6.16.2"
   },
-  "dependencies": {},
   "build": {
     "appId": "com.doctrack.app",
     "productName": "Doctrack",
@@ -41,7 +41,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.ico"
@@ -50,7 +52,9 @@
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.png",
@@ -60,7 +64,10 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["arm64", "x64"]
+          "arch": [
+            "arm64",
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.icns",
@@ -70,5 +77,8 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
     }
+  },
+  "dependencies": {
+    "@prisma/client": "^6.16.2"
   }
 }
