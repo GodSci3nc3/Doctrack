@@ -39,12 +39,42 @@ model cliente {
   created_by    Int        // NUEVO CAMPO - ID del usuario que creó el cliente
   created_at    DateTime?  @default(now()) @db.Timestamp(6)
   updated_at    DateTime?  @default(now()) @db.Timestamp(6)
-  
+
+  // --- Datos personales ---
+  encargado                String?    @db.VarChar(100)
+  tipo_proceso             String?    @db.VarChar(100)
+  tipo_documento           String?    @db.VarChar(50)
+  numero_documento         String?    @db.VarChar(50)
+  pais_origen              String?    @db.VarChar(100)
+  pais_nacimiento          String?    @db.VarChar(100)
+  fecha_nacimiento         DateTime?
+  estado_civil             String?    @db.VarChar(50)
+  direccion_actual         String?    @db.VarChar(255)
+  estado                   String?    @db.VarChar(50)
+  zipcode                  String?    @db.VarChar(20)
+  ciudad                   String?    @db.VarChar(100)
+
+  // --- Datos migratorios ---
+  migratorio_tipo_proceso      String?    @db.VarChar(100)
+  migratorio_ubicacion_actual  String?    @db.VarChar(100)
+  migratorio_estatus_actual    String?    @db.VarChar(50)
+  migratorio_numero_caso       String?    @db.VarChar(50)
+  migratorio_fecha_entrada_eeuu DateTime?
+  migratorio_via_entrada_eeuu  String?    @db.VarChar(50)
+  migratorio_fecha_vencimiento_estadia DateTime?
+  migratorio_dependientes      String?    @db.VarChar(255)
+
+  // --- Estudios y datos adicionales ---
+  ocupacion_actual         String?    @db.VarChar(100)
+  nivel_estudios           String?    @db.VarChar(100)
+  forma_contacto           String?    @db.VarChar(50)
+  notas_cliente            String?    @db.VarChar(1000)
+
   // Relaciones existentes
   caso          caso[]
   contrato      contrato[]
   pago          pago[]
-  
+
   // NUEVA RELACIÓN - Cliente pertenece a un usuario
   usuario       usuariointerno @relation(fields: [created_by], references: [usuario_id], onDelete: Cascade)
 
@@ -123,8 +153,6 @@ model pago {
   @@index([cliente_id], map: "idx_pago_cliente")
   @@index([fecha_pago], map: "idx_pago_fecha")
 }
-
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model usuariointerno {
   usuario_id      Int               @id @default(autoincrement())
   nombre          String            @db.VarChar(100)

@@ -182,9 +182,14 @@ export const createCase = async (req, res) => {
         }
       }
     });
-    
+
+    // Sincronizar tipo_proceso en el cliente
+    await prisma.cliente.update({
+      where: { cliente_id: parseInt(cliente_id) },
+      data: { tipo_proceso: tipo_tramite }
+    });
+
     console.log('Case created successfully:', newCase.caso_id);
-    
     return res.status(201).json(newCase);
     
   } catch (err) {

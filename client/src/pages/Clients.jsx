@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import ClientForm from '../components/ClientForm';
+import ClientDetails from '../components/ClientDetails';
 import { 
   PlusIcon, 
   PencilIcon, 
@@ -109,8 +111,10 @@ const api = {
 };
 
 const Clients = () => {
+  const [selectedClient, setSelectedClient] = useState(null);
   const navigate = useNavigate();
   const [clients, setClients] = useState([]);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
@@ -128,12 +132,12 @@ const Clients = () => {
 
   useEffect(() => {
     fetchClients();
-  }, []);
+  }, [search]);
 
   const fetchClients = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/api/clientes');
+  const response = await api.get(`/api/clientes?search=${encodeURIComponent(search)}`);
       
       // Adaptarse a la respuesta del backend
       let clientsData = [];
@@ -221,14 +225,11 @@ const Clients = () => {
 
   const handleEdit = (client) => {
     setEditingClient(client);
-    setFormData({
-      nombre: client.nombre || '',
-      apellido: client.apellido || '',
-      email: client.email || '',
-      telefono: client.telefono || '',
-      canal_ingreso: client.canal_ingreso || 'Web'
-    });
     setShowModal(true);
+  };
+
+  const handleRowClick = (client) => {
+    setSelectedClient(client);
   };
 
   const handleDelete = async (clientId) => {
@@ -325,6 +326,16 @@ const Clients = () => {
           </button>
         </div>
 
+        {/* Buscador */}
+        <div className="mb-4 flex justify-end">
+          <input
+            type="text"
+            className="px-4 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full max-w-xs"
+            placeholder="Buscar por nombre, apellido, correo, tipo de proceso o país..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
         {/* Tabla de Clientes */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
           {loading ? (
@@ -337,85 +348,35 @@ const Clients = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Cliente
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Contacto
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Canal de Ingreso
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Casos Activos
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Fecha Registro
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Acciones
-                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Apellido</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo de proceso</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">País</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teléfono</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Correo</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {clients.map((client) => (
-                    <tr key={client.cliente_id} className="hover:bg-gray-50 transition-colors duration-150">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10">
-                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                              <UserIcon className="h-6 w-6 text-blue-600" />
-                            </div>
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {`${client.nombre || ''} ${client.apellido || ''}`.trim() || 'Sin nombre'}
-                            </div>
-                            <div className="text-sm text-gray-500">ID: {client.cliente_id}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="space-y-1">
-                          <div className="flex items-center text-sm text-gray-900">
-                            <EnvelopeIcon className="h-4 w-4 text-gray-400 mr-2" />
-                            {client.email || 'No especificado'}
-                          </div>
-                          {client.telefono && (
-                            <div className="flex items-center text-sm text-gray-500">
-                              <PhoneIcon className="h-4 w-4 text-gray-400 mr-2" />
-                              {client.telefono}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                          {client.canal_ingreso || 'No especificado'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
-                          {getCasosActivos(client)} casos
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center text-sm text-gray-900">
-                          <CalendarIcon className="h-4 w-4 text-gray-400 mr-2" />
-                          {client.created_at ? formatDate(client.created_at) : 'No especificada'}
-                        </div>
-                      </td>
+                    <tr key={client.cliente_id} className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer" onClick={() => handleRowClick(client)}>
+                      <td className="px-6 py-4 whitespace-nowrap">{client.nombre || 'Sin nombre'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{client.apellido || 'Sin apellido'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{client.tipo_proceso || client.migratorio_tipo_proceso || 'No especificado'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{client.pais_origen || client.pais_nacimiento || 'No especificado'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{client.telefono || 'No especificado'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{client.email || 'No especificado'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
                           <button
-                            onClick={() => handleEdit(client)}
+                            onClick={(e) => { e.stopPropagation(); handleEdit(client); }}
                             className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors duration-150"
                             title="Editar cliente"
                           >
                             <PencilIcon className="h-4 w-4" />
                           </button>
                           <button
-                            onClick={() => handleDelete(client.cliente_id)}
+                            onClick={(e) => { e.stopPropagation(); handleDelete(client.cliente_id); }}
                             className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors duration-150"
                             title="Eliminar cliente"
                           >
@@ -442,146 +403,47 @@ const Clients = () => {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Modal para crear/editar cliente */}
       {showModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
-            
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <div>
-                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">
-                      {editingClient ? 'Editar Cliente' : 'Nuevo Cliente'}
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={closeModal}
-                      className="text-gray-400 hover:text-gray-600 transition-colors duration-150"
-                    >
-                      <XMarkIcon className="h-6 w-6" />
-                    </button>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    {/* Nombre */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Nombre *
-                      </label>
-                      <input
-                        type="text"
-                        name="nombre"
-                        value={formData.nombre}
-                        onChange={handleInputChange}
-                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          formErrors.nombre ? 'border-red-300' : 'border-gray-300'
-                        }`}
-                        placeholder="Ingrese el nombre"
-                      />
-                      {formErrors.nombre && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.nombre}</p>
-                      )}
-                    </div>
+        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center">
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={closeModal}></div>
+          <div className="relative z-10 w-full max-w-3xl mx-auto">
+            <ClientForm
+              initialData={editingClient || {}}
+              mode={editingClient ? 'edit' : 'create'}
+              loading={loading}
+              error={null}
+              onSubmit={async (form) => {
+                setLoading(true);
+                try {
+                  let response;
+                  if (editingClient) {
+                    response = await api.put(`/api/clientes/${editingClient.cliente_id}`, form);
+                    setClients(clients.map(client => client.cliente_id === editingClient.cliente_id ? response.data : client));
+                    showNotification('success', 'Cliente actualizado exitosamente');
+                  } else {
+                    response = await api.post('/api/clientes', form);
+                    setClients([response.data, ...clients]);
+                    showNotification('success', 'Cliente creado exitosamente');
+                  }
+                  closeModal();
+                } catch (error) {
+                  showNotification('error', `Error al ${editingClient ? 'actualizar' : 'crear'} el cliente: ${error.message}`);
+                } finally {
+                  setLoading(false);
+                }
+              }}
+            />
+          </div>
+        </div>
+      )}
 
-                    {/* Apellido */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Apellido *
-                      </label>
-                      <input
-                        type="text"
-                        name="apellido"
-                        value={formData.apellido}
-                        onChange={handleInputChange}
-                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          formErrors.apellido ? 'border-red-300' : 'border-gray-300'
-                        }`}
-                        placeholder="Ingrese el apellido"
-                      />
-                      {formErrors.apellido && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.apellido}</p>
-                      )}
-                    </div>
-
-                    {/* Email */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Email *
-                      </label>
-                      <input
-                        type="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          formErrors.email ? 'border-red-300' : 'border-gray-300'
-                        }`}
-                        placeholder="Ingrese el email"
-                      />
-                      {formErrors.email && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.email}</p>
-                      )}
-                    </div>
-
-                    {/* Teléfono */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Teléfono
-                      </label>
-                      <input
-                        type="tel"
-                        name="telefono"
-                        value={formData.telefono}
-                        onChange={handleInputChange}
-                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          formErrors.telefono ? 'border-red-300' : 'border-gray-300'
-                        }`}
-                        placeholder="Ingrese el teléfono (opcional)"
-                      />
-                      {formErrors.telefono && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.telefono}</p>
-                      )}
-                    </div>
-
-                    {/* Canal de Ingreso */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Canal de Ingreso
-                      </label>
-                      <select
-                        name="canal_ingreso"
-                        value={formData.canal_ingreso}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        {canalOptions.map(canal => (
-                          <option key={canal} value={canal}>{canal}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                  <button
-                    type="button"
-                    onClick={handleSubmit}
-                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm transition-colors duration-200"
-                  >
-                    {editingClient ? 'Actualizar' : 'Crear'} Cliente
-                  </button>
-                  <button
-                    type="button"
-                    onClick={closeModal}
-                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition-colors duration-200"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            </div>
+      {/* Modal para detalles de cliente */}
+      {selectedClient && (
+        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center">
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setSelectedClient(null)}></div>
+          <div className="relative z-10 w-full max-w-3xl mx-auto">
+            <ClientDetails client={selectedClient} onClose={() => setSelectedClient(null)} />
           </div>
         </div>
       )}
