@@ -239,6 +239,7 @@ testDatabaseConnection();
 
 // === START SERVER ===
 const PORT = process.env.PORT || 3001;
+import { prisma } from './config/database.js';
 const server = app.listen(PORT, () => {
   console.log(`🚀 Doctrack API escuchando en puerto ${PORT}`);
 });
@@ -253,4 +254,17 @@ server.on('error', (err) => {
   } else {
     console.error('Error inesperado en el servidor:', err);
   }
+});
+
+// Manejo de desconexión de Prisma para evitar errores de prepared statements
+process.on('SIGTERM', async () => {
+  await prisma.$disconnect();
+  process.exit(0);
+});
+process.on('SIGINT', async () => {
+  await prisma.$disconnect();
+  process.exit(0);
+});
+process.on('exit', async () => {
+  await prisma.$disconnect();
 });
