@@ -267,6 +267,17 @@ const DocumentChecklist = ({
   onBack, 
   showNotification 
 }) => {
+  const handleDeleteDocument = async (documentoId) => {
+    if (window.confirm('¿Seguro que deseas eliminar este documento?')) {
+      try {
+        await api.delete(`/api/documentos/${documentoId}`);
+        showNotification('success', 'Documento eliminado');
+        loadDocuments();
+      } catch (error) {
+        showNotification('error', 'Error al eliminar documento: ' + error.message);
+      }
+    }
+  };
   const [showCustomDocModal, setShowCustomDocModal] = useState(false);
   const [documents, setDocuments] = useState([]);
   const [newDoc, setNewDoc] = useState({ nombre: '', tipo: '', archivo: null });
@@ -672,6 +683,14 @@ const DocumentChecklist = ({
                             Subir archivo
                           </button>
                         </div>
+                        {/* Botón eliminar documento */}
+                        <button
+                          onClick={() => handleDeleteDocument(doc.documento_id)}
+                          className="inline-flex items-center px-2 py-1.5 bg-red-50 text-red-700 text-sm font-medium rounded-md hover:bg-red-100 transition-colors"
+                          title="Eliminar documento"
+                        >
+                          <TrashIcon className="w-5 h-5" />
+                        </button>
                       </div>
                     </div>
                   </div>
