@@ -44,47 +44,23 @@ export const createDocument = async (req, res) => {
   try {
     const { caso_id, tipo, nombre_personalizado } = req.body;
     const userId = req.user.sub;
-    
-    if (!caso_id || !tipo) {
+    if (!caso_id || !tipo || !nombre_personalizado) {
       return res.status(400).json({
-        message: 'Los campos caso_id y tipo son requeridos'
+        message: 'Los campos caso_id, tipo y nombre_personalizado son requeridos'
       });
     }
-    
     const caso = await verifyCaseOwnership(parseInt(caso_id), userId);
     if (!caso) {
       return res.status(404).json({
         message: 'El caso especificado no existe o no tienes permisos para crear documentos en él'
       });
     }
-    
-    const requiredDocs = DOCUMENT_REQUIREMENTS[caso.tipo_tramite] || [];
-    const validDocTypes = requiredDocs.map(doc => doc.documento);
-    
-    if (!validDocTypes.includes(tipo)) {
-      return res.status(400).json({
-        message: `El documento "${tipo}" no es válido para el proceso "${caso.tipo_tramite}". Documentos válidos: ${validDocTypes.join(', ')}`
-      });
-    }
-    
-    const existingDoc = await prisma.documento.findFirst({
-      where: {
-        caso_id: parseInt(caso_id),
-        tipo: tipo
-      }
-    });
-    
-    if (existingDoc) {
-      return res.status(400).json({
-        message: 'Ya existe un documento de este tipo para este caso'
-      });
-    }
-    
+    // Permitir cualquier tipo y nombre, y duplicados
     const newDocument = await prisma.documento.create({
       data: {
         caso_id: parseInt(caso_id),
         tipo: tipo,
-        nombre_personalizado: nombre_personalizado || tipo,
+        nombre_personalizado: nombre_personalizado,
         fecha_enviado: null,
         fecha_recibido: null,
         firma_digital: false,
@@ -103,7 +79,6 @@ export const createDocument = async (req, res) => {
         }
       }
     });
-    
     console.log(`User ${userId} created document ${newDocument.documento_id} (${tipo}) for case ${caso_id}`);
     return res.status(201).json(newDocument);
     
