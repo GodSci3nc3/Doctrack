@@ -1,26 +1,67 @@
-// import { google } from 'googleapis';
-// import fs from 'fs';
+import { google } from 'googleapis';
+import fs from 'fs';
 import multer from 'multer';
 import path from 'path';
+import { getOrCreateUserFolder } from './drivePermissionService.js';
 
 // === GOOGLE DRIVE CONFIGURATION ===
-// const GOOGLE_DRIVE_CLIENT_ID = process.env.GOOGLE_DRIVE_CLIENT_ID;
-// const GOOGLE_DRIVE_CLIENT_SECRET = process.env.GOOGLE_DRIVE_CLIENT_SECRET;
-// const GOOGLE_DRIVE_REFRESH_TOKEN = process.env.GOOGLE_DRIVE_REFRESH_TOKEN;
-// const GOOGLE_DRIVE_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID || '';
+const GOOGLE_DRIVE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_DRIVE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const GOOGLE_DRIVE_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID || '';
 
-// // Configure Google Drive
-// const auth = new google.auth.OAuth2(
-//   GOOGLE_DRIVE_CLIENT_ID,
-//   GOOGLE_DRIVE_CLIENT_SECRET,
-//   'https://developers.google.com/oauthplayground'
-// );
+// Configuración OAuth2 para Google Drive
+function getOAuth2Client(accessToken) {
+  const oAuth2Client = new google.auth.OAuth2(
+    GOOGLE_DRIVE_CLIENT_ID,
+    GOOGLE_DRIVE_CLIENT_SECRET,
+    process.env.GOOGLE_REDIRECT_URI
+  );
+  oAuth2Client.setCredentials({ access_token: accessToken });
+  return oAuth2Client;
+}
 
-// auth.setCredentials({
-//   refresh_token: GOOGLE_DRIVE_REFRESH_TOKEN
-// });
-
-// const drive = google.drive({ version: 'v3', auth });
+// Subida robusta: crea carpeta por usuario y sube el archivo ahí
+async function uploadToGoogleDrive({ buffer, mimeType, fileName, userId, userEmail, accessToken }) {
+  // DEBUG: Imprimir datos recibidos y variable de entorno
+  console.log('[DEBUG uploadToGoogleDrive] Datos recibidos:', { userEmail, userId, accessToken });
+  console.log('[DEBUG uploadToGoogleDrive] GOOGLE_DRIVE_FOLDER_ID:', process.env.GOOGLE_DRIVE_FOLDER_ID);
+  if (!userEmail || !userId || !accessToken) {
+    throw new Error('Faltan datos para Google Drive');
+  }
+  // Buscar o crear carpeta por usuario usando el token personal (no el del usuario)
+  const folderId = await getOrCreateUserFolder({ userId, userEmail });
+  // Subir el archivo usando el token del usuario (ya tiene permisos)
+  const auth = getOAuth2Client(accessToken);
+  const drive = google.drive({ version: 'v3', auth });
+  // Subir el archivo
+  const fileMetadata = {
+    name: fileName,
+    parents: [folderId]
+  };
+  const { Readable } = await import('stream');
+  const media = {
+    mimeType,
+    body: Readable.from(buffer)
+  };
+  const res = await drive.files.create({
+    resource: fileMetadata,
+    media,
+    fields: 'id,webViewLink,webContentLink'
+  });
+  const fileId = res.data.id;
+  const fileUrl = res.data.webViewLink;
+  // Permisos: solo el usuario puede ver/editar su archivo
+  await drive.permissions.create({
+    fileId,
+    resource: {
+      type: 'user',
+      role: 'writer',
+      emailAddress: userEmail
+    },
+    sendNotificationEmail: false
+  });
+  return fileUrl;
+}
 
 // === MULTER CONFIGURATION ===
 const storage = multer.diskStorage({
@@ -85,3 +126,5 @@ export function generateFileName(clienteName, casoId, tipoDocumento, originalExt
   
   return `${cleanClientName}_Case${casoId}_${cleanDocType}_${timestamp}${originalExtension}`;
 }
+
+export { uploadToGoogleDrive };

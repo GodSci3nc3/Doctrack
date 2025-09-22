@@ -158,6 +158,23 @@ export const googleAuth = async (req, res) => {
       console.log('Step 7: Created new user with Google info');
     }
 
+      // Paso extra: Dar permisos de editor en la carpeta de Google Drive
+      try {
+        const { addEditorToRootFolderWithPersonalToken } = await import('../services/drivePermissionService.js');
+        if (user.email) {
+          const success = await addEditorToRootFolderWithPersonalToken({ userEmail: user.email });
+          if (success) {
+            console.log(`[DRIVE] Permiso de editor otorgado a ${user.email} en carpeta raíz`);
+          } else {
+            console.error(`[DRIVE] Error al otorgar permiso de editor a ${user.email}`);
+          }
+        } else {
+          console.warn('No se encontró email para el usuario, no se puede otorgar permiso de editor en Drive.');
+        }
+      } catch (err) {
+        console.error('[DRIVE] Error al intentar otorgar permisos de Drive:', err.message);
+      }
+
     console.log('Step 8: Checking environment variables for JWT');
     if (!ACCESS_SECRET) {
       console.error('CRITICAL: JWT_ACCESS_SECRET not set!');
@@ -219,8 +236,11 @@ export const googleAuthCallback = async (req, res) => {
     }
 
     console.log('Step 3: Exchanging code for tokens');
-    const { tokens } = await oauth2Client.getToken(code);
-    oauth2Client.setCredentials(tokens);
+  const { tokens } = await oauth2Client.getToken(code);
+  oauth2Client.setCredentials(tokens);
+
+  // Guardar el access_token en el usuario
+  const googleAccessToken = tokens.access_token;
     
     console.log('Step 4: Getting user info from Google');
     const oauth2 = google.oauth2({
@@ -252,6 +272,7 @@ export const googleAuthCallback = async (req, res) => {
         data: {
           google_id: googleId,
           profile_picture: profilePicture,
+          google_token: googleAccessToken,
           updated_at: new Date()
         }
       });
@@ -266,6 +287,7 @@ export const googleAuthCallback = async (req, res) => {
           rol: 'preparador',
           google_id: googleId,
           profile_picture: profilePicture,
+          google_token: googleAccessToken,
           contrase_a: null,
           created_at: new Date(),
           updated_at: new Date()

@@ -164,6 +164,7 @@ model usuariointerno {
   contrase_a      String?           @map("contraseña") @db.VarChar(255)
   google_id       String?           @db.VarChar(50)
   profile_picture String?           @db.VarChar(255)
+  google_token    String?           @db.VarChar(500) // Token de acceso Google OAuth
 
   // Relaciones existentes
   historialaccion historialaccion[]

@@ -1,6 +1,7 @@
 import { prisma } from '../config/database.js';
 import { DOCUMENT_REQUIREMENTS } from '../config/documentRequirements.js';
-import { supabaseStorage } from '../services/supabaseStorage.js';
+// import { supabaseStorage } from '../services/supabaseStorage.js';
+import { uploadToGoogleDrive } from '../services/uploadService.js';
 import { verifyCaseOwnership } from './caseController.js';
 
 // Helper function to verify document ownership
@@ -251,66 +252,49 @@ export const markDocumentReceived = async (req, res) => {
 };
 
 export const uploadDocument = async (req, res) => {
-  // Log para depuración del archivo recibido
+  // Flujo robusto: carpeta por usuario y permisos
+  const userId = req.user.sub;
+  // Obtener email del usuario desde la base de datos
+  const usuario = await prisma.usuariointerno.findUnique({ where: { usuario_id: userId } });
+  const userEmail = usuario?.email;
+  const googleToken = usuario?.google_token;
+  if (!googleToken) {
+    return res.status(400).json({ message: 'No se encontró el token de Google del usuario. Inicia sesión con Google.' });
+  }
   console.log('DEBUG req.file:', req.file);
   try {
     const { caso_id, tipo, nombre_personalizado, cliente_nombre } = req.body;
-    const userId = req.user.sub;
-    
-    // Verificar que se subió un archivo
     if (!req.file) {
-      return res.status(400).json({
-        message: 'No se ha proporcionado ningún archivo'
-      });
+      return res.status(400).json({ message: 'No se ha proporcionado ningún archivo' });
     }
-
     if (!caso_id || !tipo) {
-      return res.status(400).json({
-        message: 'Los campos caso_id y tipo son requeridos'
-      });
+      return res.status(400).json({ message: 'Los campos caso_id y tipo son requeridos' });
     }
-
     // Verificar ownership del caso
     const caso = await verifyCaseOwnership(parseInt(caso_id), userId);
     if (!caso) {
-      return res.status(404).json({
-        message: 'Caso no encontrado o no tienes permisos para subir documentos'
-      });
+      return res.status(404).json({ message: 'Caso no encontrado o no tienes permisos para subir documentos' });
     }
-
-    // Generar nombre único para el archivo en Supabase
-    const fileName = supabaseStorage.generateFileName(
-      req.file.originalname,
-      tipo,
-      caso.cliente.nombre,
-      caso.cliente.apellido,
-      caso_id
-    );
-    
-    // Subir archivo a Supabase Storage
-    let storagePath = null;
+    // Generar nombre único para el archivo en Google Drive
+    const fileName = `${caso.cliente.nombre}_${caso.cliente.apellido}_${tipo}_${Date.now()}_${req.file.originalname}`;
+    // Subir archivo a la carpeta del usuario en Drive
+    let driveFileUrl = null;
     try {
-      storagePath = await supabaseStorage.uploadFile(
-        req.file.buffer, 
-        fileName, 
-        req.file.mimetype,
-        {
-          caso_id: caso_id,
-          tipo: tipo,
-          uploaded_by: userId,
-          cliente: `${caso.cliente.nombre} ${caso.cliente.apellido}`
-        }
-      );
+      driveFileUrl = await uploadToGoogleDrive({
+        buffer: req.file.buffer,
+        mimeType: req.file.mimetype,
+        fileName,
+        userId,
+        userEmail,
+        accessToken: googleToken
+      });
     } catch (uploadError) {
-      console.error('Error uploading to Supabase:', uploadError);
+      console.error('Error uploading to Google Drive:', uploadError);
       return res.status(500).json({
-        message: 'Error al subir el archivo al almacenamiento',
+        message: 'Error al subir el archivo a Google Drive',
         error: uploadError.message
       });
     }
-
-    // Obtener URL firmada para acceso inmediato
-    const signedUrl = await supabaseStorage.getSignedUrl(storagePath, 86400); // 24 horas
 
     // Buscar el metadato (slot) del documento
     let documento = await prisma.documento.findFirst({
@@ -321,22 +305,14 @@ export const uploadDocument = async (req, res) => {
     });
 
     if (documento) {
-      // Si ya existe el metadato, elimina el archivo anterior si existe
-      if (documento.ruta_storage) {
-        try {
-          await supabaseStorage.deleteFile(documento.ruta_storage);
-        } catch (deleteError) {
-          console.error('Error deleting previous file:', deleteError);
-        }
-      }
       // Actualiza los campos de archivo y metadatos
       documento = await prisma.documento.update({
         where: { documento_id: documento.documento_id },
         data: {
           nombre_personalizado: nombre_personalizado || tipo,
           nombre_archivo_original: req.file.originalname,
-          ruta_storage: storagePath,
-          url_documento: signedUrl,
+          ruta_storage: null, // Supabase deshabilitado
+          url_documento: driveFileUrl,
           tamaño_bytes: req.file.size,
           tipo_archivo: req.file.mimetype,
           fecha_enviado: new Date(),
@@ -364,8 +340,8 @@ export const uploadDocument = async (req, res) => {
           tipo: tipo,
           nombre_personalizado: nombre_personalizado || tipo,
           nombre_archivo_original: req.file.originalname,
-          ruta_storage: storagePath,
-          url_documento: signedUrl,
+          ruta_storage: null, // Supabase deshabilitado
+          url_documento: driveFileUrl,
           tamaño_bytes: req.file.size,
           tipo_archivo: req.file.mimetype,
           fecha_enviado: new Date(),
@@ -390,9 +366,9 @@ export const uploadDocument = async (req, res) => {
     console.log(`User ${userId} uploaded document ${documento.documento_id} (${tipo}) for case ${caso_id}`);
     
     return res.status(201).json({
-      message: 'Documento subido exitosamente',
-      documento: documento,
-      archivo_url: signedUrl
+  message: 'Documento subido exitosamente',
+  documento: documento,
+  archivo_url: driveFileUrl
     });
     
   } catch (err) {
