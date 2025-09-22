@@ -693,9 +693,32 @@ const DocumentChecklist = ({
                             </>
                           )}
                           {existingDoc && editingDoc !== existingDoc.documento_id && (
-                            <div className="flex items-center space-x-4 mt-1 text-xs text-gray-400">
+                            <div className="flex flex-col space-y-1 mt-2 text-xs text-gray-500">
                               {existingDoc.fecha_enviado && (
-                                <span>Sent: {new Date(existingDoc.fecha_enviado).toLocaleDateString()}</span>
+                                <span>
+                                  <strong>Fecha de carga:</strong> {new Date(existingDoc.fecha_enviado).toLocaleString()}
+                                </span>
+                              )}
+                              {existingDoc.tipo_archivo && (
+                                <span>
+                                  <strong>Tipo:</strong> {existingDoc.tipo_archivo}
+                                </span>
+                              )}
+                              {existingDoc.tamaño_bytes && (
+                                <span>
+                                  <strong>Tamaño:</strong> {(existingDoc.tamaño_bytes / 1024).toFixed(2)} KB
+                                </span>
+                              )}
+                              {existingDoc.url_documento && (
+                                <a
+                                  href={existingDoc.url_documento}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center px-2 py-1 bg-purple-100 text-purple-700 rounded hover:bg-purple-200 transition-colors"
+                                >
+                                  <EyeIcon className="w-4 h-4 mr-1" />
+                                  Ver documento
+                                </a>
                               )}
                               {existingDoc.fecha_recibido && (
                                 <span>Received: {new Date(existingDoc.fecha_recibido).toLocaleDateString()}</span>
