@@ -112,3 +112,4 @@ dist_electron/
 server/doctrack-drive-service-account.json
 server/client_secret.json
 server/services/personal_drive_token.json
+server/config/drive-service-account.json
