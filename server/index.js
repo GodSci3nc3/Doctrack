@@ -60,7 +60,8 @@ const allowedOrigins = isProduction
   ? [
       'https://doctrack-0jp0.onrender.com',
       'https://doctrack-frontend-fehq.onrender.com',
-      'https://doctrack.vercel.app'
+      'https://doctrack.vercel.app',
+      'https://app.mydoctrack.com',
     ]
   : ['http://localhost:5173'];
 
