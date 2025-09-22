@@ -107,3 +107,8 @@ dist_electron/
 *.db
 *.sqlite
 *.sqlite3
+
+# Google Cloud credentials and secrets
+server/doctrack-drive-service-account.json
+server/client_secret.json
+server/services/personal_drive_token.json
