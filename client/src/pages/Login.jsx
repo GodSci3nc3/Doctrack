@@ -17,9 +17,9 @@ const Login = () => {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
 
-  // Use proxy in development for same-origin requests to enable cookies
+  // Usar el backend correcto según entorno
   const API_URL = import.meta.env.MODE === 'development'
-    ? ''
+    ? 'http://localhost:3001'
     : import.meta.env?.VITE_API_URL || '';
 
   const GOOGLE_CLIENT_ID = import.meta.env?.VITE_GOOGLE_CLIENT_ID;
@@ -177,15 +177,20 @@ const Login = () => {
       if (response.ok) {
         const data = await response.json();
         console.log('Login response:', data);
-        
+
         if (data.user) {
+          // Si el usuario no tiene contraseña, mostrar mensaje especial
+          if (!data.user.password && (data.user.google_id || data.user.profile_picture)) {
+            setLoginError('Esta cuenta solo puede iniciar sesión con Google. Usa el botón de Google para acceder.');
+            return;
+          }
           try {
             // Guardar info del usuario en sessionStorage
             sessionStorage.setItem('user', JSON.stringify(data.user));
-            
+
             // Esperar un momento para asegurarse de que las cookies se establezcan
             await new Promise(resolve => setTimeout(resolve, 100));
-            
+
             // Verificar que las cookies se establecieron correctamente
             console.log('Verificando sesión...');
             const verifyResponse = await fetch(`${API_URL}/api/auth/profile`, {
@@ -196,7 +201,7 @@ const Login = () => {
                 'Content-Type': 'application/json'
               }
             });
-            
+
             if (verifyResponse.ok) {
               console.log('Sesión verificada correctamente');
               window.dispatchEvent(new Event('authChange'));
@@ -213,7 +218,7 @@ const Login = () => {
         } else {
           setLoginError('Error: No se recibieron datos del usuario');
         }
-        
+
       } else {
         const errorData = await response.json().catch(() => ({ message: 'Error en el servidor' }));
         setLoginError(errorData.message || 'Credenciales incorrectas');
