@@ -182,13 +182,39 @@ app.use((error, req, res, next) => {
 // === STATIC FILE SERVING FOR PRODUCTION ===
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Serve static files from the client build directory
-const clientBuildPath = path.join(__dirname, '..', 'client', 'dist');
-app.use(express.static(clientBuildPath));
+// Try different possible paths for the client build
+const possibleClientPaths = [
+  path.join(__dirname, '..', 'client', 'dist'),  // Development/local
+  path.join(__dirname, '..', '..', 'client', 'dist'), // Render structure
+  path.join(process.cwd(), 'client', 'dist'),   // Process working directory
+  path.join(process.cwd(), 'dist')              // If built in root
+];
+
+let clientBuildPath = null;
+for (const clientPath of possibleClientPaths) {
+  if (fs.existsSync(clientPath) && fs.existsSync(path.join(clientPath, 'index.html'))) {
+    clientBuildPath = clientPath;
+    console.log(`✅ Found client build at: ${clientBuildPath}`);
+    break;
+  } else {
+    console.log(`❌ Client build not found at: ${clientPath}`);
+  }
+}
+
+if (!clientBuildPath) {
+  console.error('🚨 No client build directory found! Available paths checked:');
+  possibleClientPaths.forEach(p => console.error(`   - ${p}`));
+  console.error('🚨 Make sure to run the build process first.');
+} else {
+  // Serve static files from the client build directory
+  app.use(express.static(clientBuildPath));
+  console.log(`🎯 Serving static files from: ${clientBuildPath}`);
+}
 
 // Handle React Router routes (SPA) - must be after API routes but before catch-all
 app.get('*', (req, res) => {
@@ -202,8 +228,20 @@ app.get('*', (req, res) => {
   }
   
   // For all other routes, serve the React app
-  console.log(`Serving React app for route: ${req.path}`);
-  res.sendFile(path.join(clientBuildPath, 'index.html'));
+  if (clientBuildPath) {
+    const indexPath = path.join(clientBuildPath, 'index.html');
+    console.log(`🎯 Serving React app for route: ${req.path} from ${indexPath}`);
+    
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      console.error(`🚨 index.html not found at: ${indexPath}`);
+      res.status(500).json({ message: 'Frontend build not found' });
+    }
+  } else {
+    console.error('🚨 No client build path available');
+    res.status(500).json({ message: 'Client build directory not configured' });
+  }
 });
 
 // Catch-all route for unmatched requests (this should now only catch API routes)

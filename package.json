@@ -11,8 +11,9 @@
     "build-client": "npm run build --prefix client",
     "build": "npm run build-client && electron-builder",
     "dist": "electron-builder --publish=never",
-    "render-build": "npm install --prefix client && npm run build --prefix client && npm install --prefix server",
-    "start": "npm start --prefix server"
+    "render-build": "echo 'Starting Render build...' && npm install --prefix client && echo 'Building client...' && npm run build --prefix client && echo 'Installing server dependencies...' && npm install --prefix server && echo 'Build complete!'",
+    "start": "npm start --prefix server",
+    "debug-build": "echo 'Debug: Current directory:' && pwd && echo 'Debug: Listing contents:' && ls -la && echo 'Debug: Checking client directory:' && ls -la client/ && echo 'Debug: Checking if dist exists:' && ls -la client/dist/ || echo 'No dist directory found'"
   },
   "devDependencies": {
     "concurrently": "^8.2.0",
