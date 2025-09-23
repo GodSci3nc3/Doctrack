@@ -14,7 +14,8 @@ import {
   CalendarIcon,
   ClockIcon,
   ArrowUpTrayIcon,
-  FolderIcon
+  FolderIcon,
+  EyeIcon
 } from '@heroicons/react/24/outline';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -403,14 +404,18 @@ const DocumentChecklist = ({
     }
   };
 
-  // NEW: File upload functionality
-  const handleFileUpload = async (requiredDoc, file) => {
-    if (!file) return;
+  // NEW: File upload functionality with improved error handling
+  const handleFileUpload = async (requiredDoc, file, existingDoc = null) => {
+    if (!file) {
+      showNotification('error', 'No se seleccionó ningún archivo.');
+      return;
+    }
 
     // Validate file size (10MB max)
     const maxSize = 10 * 1024 * 1024; // 10MB
     if (file.size > maxSize) {
       showNotification('error', 'El archivo es muy grande. Máximo 10MB permitido.');
+      if (fileInputRefs.current[requiredDoc.documento]) fileInputRefs.current[requiredDoc.documento].value = '';
       return;
     }
 
@@ -426,6 +431,7 @@ const DocumentChecklist = ({
     
     if (!allowedTypes.includes(file.type)) {
       showNotification('error', 'Tipo de archivo no permitido. Use PDF, JPG, PNG o DOC.');
+      if (fileInputRefs.current[requiredDoc.documento]) fileInputRefs.current[requiredDoc.documento].value = '';
       return;
     }
 
@@ -437,23 +443,23 @@ const DocumentChecklist = ({
       formData.append('file', file);
       formData.append('caso_id', caseData.caso_id.toString());
       formData.append('tipo', requiredDoc.documento);
+      formData.append('nombre_personalizado', existingDoc?.nombre_personalizado || requiredDoc.documento);
       formData.append('cliente_nombre', `${caseData.cliente?.nombre} ${caseData.cliente?.apellido}`.trim());
 
       // NEW: Upload API call
       const response = await api.upload('/api/documentos/upload', formData);
       
       showNotification('success', 'Documento subido exitosamente');
-      loadDocuments();
+      await loadDocuments();
       
+    } catch (error) {
+      console.error('Error uploading document:', error);
+      showNotification('error', 'Error al subir documento: ' + (error?.message || 'Error desconocido'));
+    } finally {
       // Reset file input
       if (fileInputRefs.current[docKey]) {
         fileInputRefs.current[docKey].value = '';
       }
-      
-    } catch (error) {
-      console.error('Error uploading document:', error);
-      showNotification('error', 'Error al subir documento: ' + error.message);
-    } finally {
       setUploadingDocs(prev => {
         const newSet = new Set(prev);
         newSet.delete(docKey);
@@ -614,84 +620,249 @@ const DocumentChecklist = ({
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
                 <span className="ml-3 text-gray-600">Loading documents...</span>
               </div>
+            ) : requiredDocuments.length === 0 ? (
+              <div className="text-center py-12">
+                <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No document requirements</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  No specific documents are required for this process type.
+                </p>
+              </div>
             ) : (
-              <div className="space-y-3">
-                {documents.map((doc, index) => (
-                  <div 
-                    key={doc.documento_id || index}
-                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-center space-x-4">
-                      <div className="flex-shrink-0">
-                        <DocumentTextIcon className="w-6 h-6 text-gray-400" />
+              <div className="space-y-4">
+                {requiredDocuments.map((requiredDoc, index) => {
+                  const status = getDocumentStatus(requiredDoc);
+                  const existingDoc = Array.isArray(documents) ? documents.find(doc => doc.tipo === requiredDoc.documento) : null;
+                  const isUploading = uploadingDocs.has(requiredDoc.documento);
+                  
+                  return (
+                    <div 
+                      key={index}
+                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-center space-x-4 flex-1">
+                        <div className="flex-shrink-0">
+                          <DocumentTextIcon className="w-6 h-6 text-gray-400" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-medium text-gray-900">
+                            {existingDoc?.nombre_personalizado || requiredDoc.documento}
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            {requiredDoc.tipo} {existingDoc?.nombre_personalizado !== requiredDoc.documento && `(${requiredDoc.documento})`}
+                          </p>
+                          {existingDoc && (
+                            <div className="flex flex-col space-y-1 mt-2 text-xs text-gray-500">
+                              {existingDoc.fecha_enviado && (
+                                <span>
+                                  <strong>Fecha de carga:</strong> {new Date(existingDoc.fecha_enviado).toLocaleString()}
+                                </span>
+                              )}
+                              {existingDoc.tipo_archivo && (
+                                <span>
+                                  <strong>Tipo:</strong> {existingDoc.tipo_archivo}
+                                </span>
+                              )}
+                              {existingDoc.tamaño_bytes && (
+                                <span>
+                                  <strong>Tamaño:</strong> {(existingDoc.tamaño_bytes / 1024).toFixed(2)} KB
+                                </span>
+                              )}
+                              {existingDoc.url_documento && (
+                                <a
+                                  href={existingDoc.url_documento}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center px-2 py-1 bg-purple-100 text-purple-700 rounded hover:bg-purple-200 transition-colors"
+                                >
+                                  <EyeIcon className="w-4 h-4 mr-1" />
+                                  Ver documento
+                                </a>
+                              )}
+                              {existingDoc.fecha_recibido && (
+                                <span>Received: {new Date(existingDoc.fecha_recibido).toLocaleDateString()}</span>
+                              )}
+                              {existingDoc.nombre_archivo_original && (
+                                <span>File: {existingDoc.nombre_archivo_original}</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-medium text-gray-900">
-                          {doc.nombre_personalizado || doc.tipo}
-                        </h3>
-                        <p className="text-sm text-gray-500">
-                          {doc.tipo}
-                        </p>
-                        <div className="flex items-center space-x-4 mt-1 text-xs text-gray-400">
-                          {doc.fecha_enviado && (
-                            <span>Enviado: {new Date(doc.fecha_enviado).toLocaleDateString()}</span>
-                          )}
-                          {doc.fecha_recibido && (
-                            <span>Recibido: {new Date(doc.fecha_recibido).toLocaleDateString()}</span>
-                          )}
-                          {doc.url_documento && (
-                            <a 
-                              href={doc.url_documento} 
-                              target="_blank" 
+
+                      <div className="flex items-center space-x-4">
+                        <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${status.bgColor} ${status.color}`}>
+                          <status.icon className="w-4 h-4 mr-1" />
+                          {status.text}
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          {/* View Document Button */}
+                          {existingDoc && existingDoc.url_documento && (
+                            <a
+                              href={existingDoc.url_documento}
+                              target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-500 hover:underline"
+                              className="inline-flex items-center px-2 py-1 text-blue-600 hover:text-blue-800 transition-colors"
+                              title="View document"
                             >
+                              <EyeIcon className="w-4 h-4" />
+                            </a>
+                          )}
+
+                          {/* Mark as Received Button */}
+                          {existingDoc && !existingDoc.fecha_recibido && (
+                            <button
+                              onClick={() => handleMarkAsReceived(existingDoc.documento_id)}
+                              className="inline-flex items-center px-3 py-1.5 bg-green-50 text-green-700 text-sm font-medium rounded-md hover:bg-green-100 transition-colors"
+                            >
+                              <CheckCircleIcon className="w-4 h-4 mr-1" />
+                              Mark Received
+                            </button>
+                          )}
+
+                          {/* Upload Button */}
+                          <div className="relative">
+                            <input
+                              type="file"
+                              ref={el => fileInputRefs.current[requiredDoc.documento] = el}
+                              onChange={(e) => handleFileUpload(requiredDoc, e.target.files[0], existingDoc)}
+                              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                              className="hidden"
+                            />
+                            <button
+                              onClick={() => triggerFileInput(requiredDoc.documento)}
+                              disabled={isUploading}
+                              className="inline-flex items-center px-3 py-1.5 bg-blue-50 text-blue-700 text-sm font-medium rounded-md hover:bg-blue-100 transition-colors disabled:opacity-50"
+                              title={existingDoc?.url_documento ? "Replace file" : "Upload file"}
+                            >
+                              {isUploading ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700 mr-1"></div>
+                                  Uploading...
+                                </>
+                              ) : (
+                                <>
+                                  <ArrowUpTrayIcon className="w-4 h-4 mr-1" />
+                                  {existingDoc?.url_documento ? 'Replace' : 'Upload'}
+                                </>
+                              )}
+                            </button>
+                          </div>
+
+                          {/* Delete Document Button */}
+                          {existingDoc && (
+                            <button
+                              onClick={() => handleDeleteDocument(existingDoc.documento_id)}
+                              className="inline-flex items-center px-2 py-1 text-red-600 hover:text-red-800 transition-colors"
+                              title="Delete document"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                
+                {/* Show custom documents that are not in required list */}
+                {Array.isArray(documents) && documents.filter(doc => 
+                  !requiredDocuments.find(reqDoc => reqDoc.documento === doc.tipo)
+                ).map((customDoc, index) => (
+                  <div 
+                    key={`custom-${customDoc.documento_id || index}`}
+                    className="flex items-center justify-between p-4 border border-purple-200 rounded-lg hover:shadow-md transition-shadow bg-purple-50"
+                  >
+                    <div className="flex items-center space-x-4 flex-1">
+                      <div className="flex-shrink-0">
+                        <DocumentTextIcon className="w-6 h-6 text-purple-400" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-medium text-gray-900">
+                          {customDoc.nombre_personalizado || customDoc.tipo}
+                        </h3>
+                        <p className="text-sm text-purple-600">
+                          Documento personalizado - {customDoc.tipo}
+                        </p>
+                        <div className="flex flex-col space-y-1 mt-2 text-xs text-gray-500">
+                          {customDoc.fecha_enviado && (
+                            <span>
+                              <strong>Fecha de carga:</strong> {new Date(customDoc.fecha_enviado).toLocaleString()}
+                            </span>
+                          )}
+                          {customDoc.url_documento && (
+                            <a
+                              href={customDoc.url_documento}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center px-2 py-1 bg-purple-100 text-purple-700 rounded hover:bg-purple-200 transition-colors"
+                            >
+                              <EyeIcon className="w-4 h-4 mr-1" />
                               Ver documento
                             </a>
                           )}
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-4">
-                      <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${doc.fecha_recibido ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
-                        {doc.fecha_recibido ? <CheckCircleIcon className="w-4 h-4 mr-1" /> : <ClockIcon className="w-4 h-4 mr-1" />}
-                        {doc.fecha_recibido ? 'Completado' : 'Pendiente'}
+
+                    <div className="flex items-center space-x-2">
+                      <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${customDoc.fecha_recibido ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-600'}`}>
+                        {customDoc.fecha_recibido ? <CheckCircleIcon className="w-4 h-4 mr-1" /> : <ClockIcon className="w-4 h-4 mr-1" />}
+                        {customDoc.fecha_recibido ? 'Completed' : 'In Review'}
                       </div>
-                      <div className="flex items-center space-x-2">
-                        {!doc.fecha_recibido && (
-                          <button
-                            onClick={() => handleMarkAsReceived(doc.documento_id)}
-                            className="inline-flex items-center px-3 py-1.5 bg-green-50 text-green-700 text-sm font-medium rounded-md hover:bg-green-100 transition-colors"
-                          >
-                            <CheckCircleIcon className="w-4 h-4 mr-1" />
-                            Marcar recibido
-                          </button>
-                        )}
-                        <div className="relative">
-                          <input
-                            type="file"
-                            ref={el => fileInputRefs.current[doc.documento_id] = el}
-                            onChange={(e) => handleFileUpload(doc, e.target.files[0])}
-                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                            className="hidden"
-                          />
-                          <button
-                            onClick={() => triggerFileInput(doc.documento_id)}
-                            className="inline-flex items-center px-3 py-1.5 bg-blue-50 text-blue-700 text-sm font-medium rounded-md hover:bg-blue-100 transition-colors"
-                          >
-                            <ArrowUpTrayIcon className="w-4 h-4 mr-1" />
-                            Subir archivo
-                          </button>
-                        </div>
-                        {/* Botón eliminar documento */}
-                        <button
-                          onClick={() => handleDeleteDocument(doc.documento_id)}
-                          className="inline-flex items-center px-2 py-1.5 bg-red-50 text-red-700 text-sm font-medium rounded-md hover:bg-red-100 transition-colors"
-                          title="Eliminar documento"
+
+                      {/* View Document Button */}
+                      {customDoc.url_documento && (
+                        <a
+                          href={customDoc.url_documento}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center px-2 py-1 text-blue-600 hover:text-blue-800 transition-colors"
+                          title="View document"
                         >
-                          <TrashIcon className="w-5 h-5" />
+                          <EyeIcon className="w-4 h-4" />
+                        </a>
+                      )}
+
+                      {/* Mark as Received Button */}
+                      {!customDoc.fecha_recibido && (
+                        <button
+                          onClick={() => handleMarkAsReceived(customDoc.documento_id)}
+                          className="inline-flex items-center px-3 py-1.5 bg-green-50 text-green-700 text-sm font-medium rounded-md hover:bg-green-100 transition-colors"
+                        >
+                          <CheckCircleIcon className="w-4 h-4 mr-1" />
+                          Mark Received
+                        </button>
+                      )}
+
+                      {/* Upload Button for custom docs */}
+                      <div className="relative">
+                        <input
+                          type="file"
+                          ref={el => fileInputRefs.current[`custom-${customDoc.documento_id}`] = el}
+                          onChange={(e) => handleFileUpload({ documento: customDoc.tipo }, e.target.files[0], customDoc)}
+                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                          className="hidden"
+                        />
+                        <button
+                          onClick={() => triggerFileInput(`custom-${customDoc.documento_id}`)}
+                          className="inline-flex items-center px-3 py-1.5 bg-blue-50 text-blue-700 text-sm font-medium rounded-md hover:bg-blue-100 transition-colors"
+                          title={customDoc.url_documento ? "Replace file" : "Upload file"}
+                        >
+                          <ArrowUpTrayIcon className="w-4 h-4 mr-1" />
+                          {customDoc.url_documento ? 'Replace' : 'Upload'}
                         </button>
                       </div>
+
+                      {/* Delete Document Button */}
+                      <button
+                        onClick={() => handleDeleteDocument(customDoc.documento_id)}
+                        className="inline-flex items-center px-2 py-1 text-red-600 hover:text-red-800 transition-colors"
+                        title="Delete document"
+                      >
+                        <TrashIcon className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
                 ))}

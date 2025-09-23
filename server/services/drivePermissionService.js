@@ -10,8 +10,28 @@ const __dirname = dirname(__filename);
 
 // Helper para obtener el cliente OAuth2 con el token personal
 function getPersonalOAuth2Client() {
-  const tokenPath = path.join(__dirname, 'personal_drive_token.json');
-  const tokens = JSON.parse(fs.readFileSync(tokenPath));
+  // Try to get tokens from environment variable first, fall back to file
+  let tokens;
+  
+  if (process.env.PERSONAL_DRIVE_TOKEN_JSON) {
+    try {
+      tokens = JSON.parse(process.env.PERSONAL_DRIVE_TOKEN_JSON);
+      console.log('[DRIVE] Using personal token from environment variable');
+    } catch (error) {
+      console.error('[DRIVE] Error parsing PERSONAL_DRIVE_TOKEN_JSON from environment:', error.message);
+      throw new Error('Invalid PERSONAL_DRIVE_TOKEN_JSON format');
+    }
+  } else {
+    // Fallback to file for development
+    const tokenPath = path.join(__dirname, 'personal_drive_token.json');
+    if (fs.existsSync(tokenPath)) {
+      tokens = JSON.parse(fs.readFileSync(tokenPath));
+      console.log('[DRIVE] Using personal token from file (development mode)');
+    } else {
+      throw new Error('No personal drive token found in environment or file');
+    }
+  }
+  
   const oAuth2Client = new google.auth.OAuth2(
     process.env.DRIVE_OWNER_CLIENT_ID,
     process.env.DRIVE_OWNER_CLIENT_SECRET,
@@ -77,13 +97,32 @@ export async function getOrCreateUserFolder({ userId, userEmail }) {
 
 // Utilidad: Dar permisos de editor en la carpeta raíz usando el token personal
 export async function addEditorToRootFolderWithPersonalToken({ userEmail }) {
-  // Leer token personal
-  const tokenPath = path.join(__dirname, 'personal_drive_token.json');
-  const tokens = JSON.parse(fs.readFileSync(tokenPath));
+  // Use the same logic as getPersonalOAuth2Client for consistency
+  let tokens;
+  
+  if (process.env.PERSONAL_DRIVE_TOKEN_JSON) {
+    try {
+      tokens = JSON.parse(process.env.PERSONAL_DRIVE_TOKEN_JSON);
+    } catch (error) {
+      console.error('[DRIVE] Error parsing PERSONAL_DRIVE_TOKEN_JSON:', error.message);
+      return false;
+    }
+  } else {
+    // Fallback to file for development
+    const tokenPath = path.join(__dirname, 'personal_drive_token.json');
+    if (fs.existsSync(tokenPath)) {
+      tokens = JSON.parse(fs.readFileSync(tokenPath));
+    } else {
+      console.error('[DRIVE] No personal drive token found');
+      return false;
+    }
+  }
+  
   const oAuth2Client = new google.auth.OAuth2();
   oAuth2Client.setCredentials(tokens);
   const drive = google.drive({ version: 'v3', auth: oAuth2Client });
   const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+  
   try {
     const res = await drive.permissions.create({
       fileId: folderId,
