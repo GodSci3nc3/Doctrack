@@ -179,7 +179,34 @@ app.use((error, req, res, next) => {
   next(error);
 });
 
-// Catch-all route for unmatched requests
+// === STATIC FILE SERVING FOR PRODUCTION ===
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Serve static files from the client build directory
+const clientBuildPath = path.join(__dirname, '..', 'client', 'dist');
+app.use(express.static(clientBuildPath));
+
+// Handle React Router routes (SPA) - must be after API routes but before catch-all
+app.get('*', (req, res) => {
+  // Only serve index.html for non-API routes
+  if (req.path.startsWith('/api/') || req.path.startsWith('/auth/') || req.path === '/health') {
+    return res.status(404).json({ 
+      message: 'API route not found',
+      method: req.method,
+      url: req.url
+    });
+  }
+  
+  // For all other routes, serve the React app
+  console.log(`Serving React app for route: ${req.path}`);
+  res.sendFile(path.join(clientBuildPath, 'index.html'));
+});
+
+// Catch-all route for unmatched requests (this should now only catch API routes)
 app.all('*', function(req, res) {
   console.log(`Unmatched route: ${req.method} ${req.url}`);
   res.status(404).json({ 
