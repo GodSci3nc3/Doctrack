@@ -37,6 +37,15 @@ const Login = () => {
   useEffect(() => {
     const code = searchParams.get('code');
     const state = searchParams.get('state');
+    const error = searchParams.get('error');
+    
+    console.log('[DEBUG] URL params:', { code: !!code, state, error });
+    console.log('[DEBUG] Current URL:', window.location.href);
+    
+    if (error) {
+      setLoginError(`Error de Google OAuth: ${error}`);
+      return;
+    }
     
     if (code && state === 'google_login') {
       handleGoogleCallback(code);
@@ -49,6 +58,9 @@ const Login = () => {
       setIsGoogleLoading(true);
       setLoginError('');
 
+      console.log('[DEBUG] Handling Google callback with code:', code.substring(0, 20) + '...');
+      console.log('[DEBUG] API URL:', API_URL);
+
       const response = await fetch(`${API_URL}/auth/google/callback`, {
         method: 'POST',
         headers: {
@@ -58,8 +70,12 @@ const Login = () => {
         body: JSON.stringify({ code }),
       });
 
+      console.log('[DEBUG] Response status:', response.status);
+      console.log('[DEBUG] Response ok:', response.ok);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('[DEBUG] Response data:', { user: !!data.user, message: data.message });
         
         if (data.user) {
           updateAuthState(data.user);
@@ -69,6 +85,7 @@ const Login = () => {
         
       } else {
         const errorData = await response.json().catch(() => ({ message: 'Error en el servidor' }));
+        console.error('[DEBUG] Error response:', errorData);
         setLoginError(errorData.message || 'Error al iniciar sesión con Google');
       }
     } catch (error) {
@@ -86,7 +103,12 @@ const Login = () => {
       return;
     }
 
-    const currentUrl = window.location.origin + '/login';
+    // Use explicit production URL or current origin  
+    const redirectUri = import.meta.env.PROD 
+      ? 'https://app.mydoctrack.com/login'
+      : window.location.origin + '/login';
+    
+    console.log('[DEBUG] Redirect URI:', redirectUri);
     
     // Scopes para Google Drive y perfil básico
     const scopes = [
@@ -99,13 +121,14 @@ const Login = () => {
 
     const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
       `client_id=${GOOGLE_CLIENT_ID}&` +
-      `redirect_uri=${encodeURIComponent(currentUrl)}&` +
+      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
       `response_type=code&` +
       `scope=${encodeURIComponent(scopes)}&` +
       `state=google_login&` +
       `access_type=offline&` +
       `prompt=consent`;
 
+    console.log('[DEBUG] Google Auth URL:', googleAuthUrl);
     window.location.href = googleAuthUrl;
   };
 
