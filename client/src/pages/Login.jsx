@@ -105,7 +105,7 @@ const Login = () => {
 
     // Use explicit production URL or current origin  
     const redirectUri = import.meta.env.PROD 
-      ? 'https://app.mydoctrack.com/login'
+      ? `${window.location.origin}/login`  // Use frontend URL, not backend
       : window.location.origin + '/login';
     
     console.log('[DEBUG] Redirect URI:', redirectUri);
