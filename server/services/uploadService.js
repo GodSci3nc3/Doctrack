@@ -21,46 +21,105 @@ function getOAuth2Client(accessToken) {
 }
 
 // Subida robusta: crea carpeta por usuario y sube el archivo ahí
-async function uploadToGoogleDrive({ buffer, mimeType, fileName, userId, userEmail, accessToken }) {
+async function uploadToGoogleDrive({ buffer, mimeType, fileName, userId, userEmail, accessToken, refreshToken }) {
   // DEBUG: Imprimir datos recibidos y variable de entorno
-  console.log('[DEBUG uploadToGoogleDrive] Datos recibidos:', { userEmail, userId, accessToken });
+  console.log('[DEBUG uploadToGoogleDrive] Datos recibidos:', { 
+    userEmail, 
+    userId, 
+    accessToken: accessToken ? 'PRESENTE' : 'AUSENTE',
+    refreshToken: refreshToken ? 'PRESENTE' : 'AUSENTE'
+  });
   console.log('[DEBUG uploadToGoogleDrive] GOOGLE_DRIVE_FOLDER_ID:', process.env.GOOGLE_DRIVE_FOLDER_ID);
+  
   if (!userEmail || !userId || !accessToken) {
     throw new Error('Faltan datos para Google Drive');
   }
-  // Buscar o crear carpeta por usuario usando el token personal (no el del usuario)
-  const folderId = await getOrCreateUserFolder({ userId, userEmail });
-  // Subir el archivo usando el token del usuario (ya tiene permisos)
+
+  // Configurar OAuth2 client
   const auth = getOAuth2Client(accessToken);
-  const drive = google.drive({ version: 'v3', auth });
-  // Subir el archivo
-  const fileMetadata = {
-    name: fileName,
-    parents: [folderId]
-  };
-  const { Readable } = await import('stream');
-  const media = {
-    mimeType,
-    body: Readable.from(buffer)
-  };
-  const res = await drive.files.create({
-    resource: fileMetadata,
-    media,
-    fields: 'id,webViewLink,webContentLink'
-  });
-  const fileId = res.data.id;
-  const fileUrl = res.data.webViewLink;
-  // Permisos: solo el usuario puede ver/editar su archivo
-  await drive.permissions.create({
-    fileId,
-    resource: {
-      type: 'user',
-      role: 'writer',
-      emailAddress: userEmail
-    },
-    sendNotificationEmail: false
-  });
-  return fileUrl;
+  if (refreshToken) {
+    auth.setCredentials({
+      access_token: accessToken,
+      refresh_token: refreshToken
+    });
+  }
+
+  try {
+    // Buscar o crear carpeta por usuario usando el token personal (no el del usuario)
+    const folderId = await getOrCreateUserFolder({ userId, userEmail });
+    
+    // Subir el archivo usando el token del usuario (ya tiene permisos)
+    const drive = google.drive({ version: 'v3', auth });
+    
+    // Subir el archivo
+    const fileMetadata = {
+      name: fileName,
+      parents: [folderId]
+    };
+    const { Readable } = await import('stream');
+    const media = {
+      mimeType,
+      body: Readable.from(buffer)
+    };
+    
+    const res = await drive.files.create({
+      resource: fileMetadata,
+      media,
+      fields: 'id,webViewLink,webContentLink'
+    });
+    
+    const fileId = res.data.id;
+    const fileUrl = res.data.webViewLink;
+    
+    // Permisos: solo el usuario puede ver/editar su archivo
+    await drive.permissions.create({
+      fileId,
+      resource: {
+        type: 'user',
+        role: 'writer',
+        emailAddress: userEmail
+      },
+      sendNotificationEmail: false
+    });
+    
+    return fileUrl;
+    
+  } catch (error) {
+    console.error('[DEBUG] Error en uploadToGoogleDrive:', error);
+    
+    // Si el error es de autenticación, intentar refresh del token
+    if ((error.code === 401 || error.status === 401) && refreshToken) {
+      try {
+        console.log('[DEBUG] Intentando refresh del token...');
+        const { credentials } = await auth.refreshAccessToken();
+        auth.setCredentials(credentials);
+        
+        console.log('[DEBUG] Token refreshed exitosamente');
+        
+        // Reintentar la subida con el nuevo token
+        return await uploadToGoogleDrive({
+          buffer, 
+          mimeType, 
+          fileName, 
+          userId, 
+          userEmail, 
+          accessToken: credentials.access_token,
+          refreshToken: credentials.refresh_token || refreshToken
+        });
+        
+      } catch (refreshError) {
+        console.error('[DEBUG] Error al refresh del token:', refreshError);
+        // Lanzar el error original con código 401 para que sea manejado correctamente
+        const originalError = new Error('Token de Google expirado y no se pudo renovar');
+        originalError.code = 401;
+        originalError.status = 401;
+        throw originalError;
+      }
+    }
+    
+    // Para otros errores o si no hay refresh token, lanzar el error original
+    throw error;
+  }
 }
 
 // === MULTER CONFIGURATION ===

@@ -14,8 +14,10 @@ const router = express.Router();
 
 // === AUTH ROUTES ===
 router.post('/auth/login', authController.login);
+router.get('/auth/google', authController.googleAuthRedirect);
 router.post('/auth/google', authController.googleAuth);
 router.post('/auth/google/callback', authController.googleAuthCallback);
+router.get('/auth/google/callback', authController.googleAuthCallback);
 router.post('/auth/register', authController.register);
 router.post('/auth/logout', authController.logout);
 router.get('/api/auth/profile', authRequired, authController.getProfile);

@@ -8,8 +8,8 @@ import { signAccessToken, signRefreshToken, setAuthCookies, clearAuthCookies } f
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const REDIRECT_URI = process.env.NODE_ENV === 'production' 
-  ? `${process.env.FRONTEND_URL}/login`
-  : 'http://localhost:5173/login';
+  ? `${process.env.BACKEND_URL || process.env.FRONTEND_URL}/auth/google/callback`
+  : 'http://localhost:3001/auth/google/callback';
 
 const oauth2Client = new OAuth2Client(
   GOOGLE_CLIENT_ID,
@@ -84,6 +84,39 @@ export const login = async (req, res) => {
     console.error('LOGIN error at step:', err.message);
     console.error('Full error:', err);
     return res.status(500).json({ message: 'Error en login', error: err.message });
+  }
+};
+
+// GET /auth/google - Iniciar flujo de OAuth
+export const googleAuthRedirect = async (req, res) => {
+  console.log('--- GOOGLE AUTH REDIRECT START ---');
+  try {
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+      console.error('CRITICAL: Google OAuth credentials not set!');
+      return res.status(500).json({ message: 'Server configuration error' });
+    }
+
+    // Configurar OAuth2 client
+    oauth2Client.setCredentials({});
+    
+    // Generar URL de autorización
+    const authUrl = oauth2Client.generateAuthUrl({
+      access_type: 'offline',
+      scope: [
+        'openid',
+        'profile',
+        'email',
+        'https://www.googleapis.com/auth/drive.file',
+        'https://www.googleapis.com/auth/drive.readonly'
+      ],
+      prompt: 'consent'
+    });
+
+    console.log('Redirecting to Google Auth URL');
+    res.redirect(authUrl);
+  } catch (error) {
+    console.error('GOOGLE AUTH REDIRECT error:', error.message);
+    res.status(500).json({ message: 'Error al iniciar autenticación con Google' });
   }
 };
 
@@ -223,7 +256,8 @@ export const googleAuthCallback = async (req, res) => {
   console.log('--- GOOGLE AUTH CALLBACK START ---');
   try {
     console.log('Step 1: Parsing authorization code');
-    const { code } = req.body || {};
+    // Manejar tanto GET (query) como POST (body)
+    const { code } = req.query || req.body || {};
     
     if (!code) {
       console.log('Step 2: No authorization code provided');
@@ -239,8 +273,9 @@ export const googleAuthCallback = async (req, res) => {
   const { tokens } = await oauth2Client.getToken(code);
   oauth2Client.setCredentials(tokens);
 
-  // Guardar el access_token en el usuario
+  // Guardar el access_token y refresh_token en el usuario
   const googleAccessToken = tokens.access_token;
+  const googleRefreshToken = tokens.refresh_token;
     
     console.log('Step 4: Getting user info from Google');
     const oauth2 = google.oauth2({
@@ -273,6 +308,7 @@ export const googleAuthCallback = async (req, res) => {
           google_id: googleId,
           profile_picture: profilePicture,
           google_token: googleAccessToken,
+          google_refresh_token: googleRefreshToken,
           updated_at: new Date()
         }
       });
@@ -288,6 +324,7 @@ export const googleAuthCallback = async (req, res) => {
           google_id: googleId,
           profile_picture: profilePicture,
           google_token: googleAccessToken,
+          google_refresh_token: googleRefreshToken,
           contrase_a: null,
           created_at: new Date(),
           updated_at: new Date()
@@ -321,6 +358,18 @@ export const googleAuthCallback = async (req, res) => {
     } = user;
     
     console.log('Step 13: Sending successful response');
+    
+    // Si es GET (redirección desde el modal), redirigir al frontend
+    if (req.method === 'GET') {
+      const frontendUrl = process.env.NODE_ENV === 'production' 
+        ? process.env.FRONTEND_URL || 'https://your-frontend-url.com'
+        : 'http://localhost:5173';
+      
+      // Redirigir a /cases por defecto o usar sessionStorage si está disponible
+      return res.redirect(`${frontendUrl}/cases`);
+    }
+    
+    // Si es POST (desde login), devolver JSON
     return res.json({ 
       user: safeUser,
       isNewUser: !user.updated_at || user.created_at.getTime() === user.updated_at.getTime()
@@ -330,6 +379,16 @@ export const googleAuthCallback = async (req, res) => {
     console.error('GOOGLE AUTH CALLBACK error:', err.message);
     console.error('Full error:', err);
     
+    // Si es GET (redirección), redirigir al frontend con error
+    if (req.method === 'GET') {
+      const frontendUrl = process.env.NODE_ENV === 'production' 
+        ? process.env.FRONTEND_URL || 'https://your-frontend-url.com'
+        : 'http://localhost:5173';
+      
+      return res.redirect(`${frontendUrl}/login?error=google_auth_failed`);
+    }
+    
+    // Si es POST, devolver JSON con error
     if (err.message.includes('invalid_grant')) {
       return res.status(400).json({ message: 'Código de autorización inválido o expirado' });
     }

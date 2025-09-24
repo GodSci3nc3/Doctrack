@@ -165,6 +165,7 @@ model usuariointerno {
   google_id       String?           @db.VarChar(50)
   profile_picture String?           @db.VarChar(255)
   google_token    String?           @db.VarChar(500) // Token de acceso Google OAuth
+  google_refresh_token String?      @db.VarChar(500) // Refresh token para renovar el access token
 
   // Relaciones existentes
   historialaccion historialaccion[]

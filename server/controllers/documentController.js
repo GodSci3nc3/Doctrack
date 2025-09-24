@@ -258,6 +258,7 @@ export const uploadDocument = async (req, res) => {
   const usuario = await prisma.usuariointerno.findUnique({ where: { usuario_id: userId } });
   const userEmail = usuario?.email;
   const googleToken = usuario?.google_token;
+  const googleRefreshToken = usuario?.google_refresh_token;
   if (!googleToken) {
     return res.status(400).json({ message: 'No se encontró el token de Google del usuario. Inicia sesión con Google.' });
   }
@@ -286,11 +287,23 @@ export const uploadDocument = async (req, res) => {
         fileName,
         userId,
         userEmail,
-        accessToken: googleToken
+        accessToken: googleToken,
+        refreshToken: googleRefreshToken
       });
     } catch (uploadError) {
       console.error('Error uploading to Google Drive:', uploadError);
+      
+      // Detectar errores de autenticación de Google
+      if (uploadError.code === 401 || uploadError.status === 401) {
+        return res.status(401).json({
+          success: false,
+          message: 'Tu sesión con Google ha expirado. Por favor, vuelve a autenticarte.',
+          code: 'GOOGLE_AUTH_EXPIRED'
+        });
+      }
+      
       return res.status(500).json({
+        success: false,
         message: 'Error al subir el archivo a Google Drive',
         error: uploadError.message
       });
