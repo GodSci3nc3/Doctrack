@@ -50,6 +50,10 @@ export const login = async (req, res) => {
     }
 
     console.log('Step 9: Comparing password with hash');
+    if (!user.contrase_a) {
+      console.log('Step 9a: User registered via external provider, no password set');
+      return res.status(401).json({ message: 'Usuario registrado con proveedor externo, por favor inicie sesión con ese método.' });
+    }
     const ok = await bcrypt.compare(password, user.contrase_a);
     console.log('Step 10: Password match:', ok ? 'YES' : 'NO');
     
