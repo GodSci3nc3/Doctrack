@@ -7,9 +7,11 @@ import { signAccessToken, signRefreshToken, setAuthCookies, clearAuthCookies } f
 // Configuración de Google OAuth
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const REDIRECT_URI = process.env.NODE_ENV === 'production' 
-  ? `${process.env.BACKEND_URL || process.env.FRONTEND_URL}/auth/google/callback`
-  : 'http://localhost:3001/auth/google/callback';
+const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || (
+  process.env.NODE_ENV === 'production' 
+    ? `${process.env.BACKEND_URL}/auth/google/callback`
+    : 'http://localhost:3001/auth/google/callback'
+);
 
 const oauth2Client = new OAuth2Client(
   GOOGLE_CLIENT_ID,
@@ -50,10 +52,6 @@ export const login = async (req, res) => {
     }
 
     console.log('Step 9: Comparing password with hash');
-    if (!user.contrase_a) {
-      console.log('Step 9a: User registered via external provider, no password set');
-      return res.status(401).json({ message: 'Usuario registrado con proveedor externo, por favor inicie sesión con ese método.' });
-    }
     const ok = await bcrypt.compare(password, user.contrase_a);
     console.log('Step 10: Password match:', ok ? 'YES' : 'NO');
     
@@ -103,15 +101,13 @@ export const googleAuthRedirect = async (req, res) => {
     // Configurar OAuth2 client
     oauth2Client.setCredentials({});
     
-    // Generar URL de autorización
+    // Generar URL de autorización - Solo login básico
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: [
         'openid',
         'profile',
-        'email',
-        'https://www.googleapis.com/auth/drive.file',
-        'https://www.googleapis.com/auth/drive.readonly'
+        'email'
       ],
       prompt: 'consent'
     });

@@ -110,13 +110,11 @@ const Login = () => {
     
     console.log('[DEBUG] Redirect URI:', redirectUri);
     
-    // Scopes para Google Drive y perfil básico
+    // Scopes solo para login básico
     const scopes = [
       'openid',
       'profile', 
-      'email',
-      'https://www.googleapis.com/auth/drive.file',
-      'https://www.googleapis.com/auth/drive.readonly'
+      'email'
     ].join(' ');
 
     const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
