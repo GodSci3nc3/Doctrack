@@ -13,6 +13,13 @@ const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || (
     : 'http://localhost:5173/login'
 );
 
+// Debug logs para diagnosticar el problema
+console.log('[AUTH CONTROLLER INIT] Environment variables:');
+console.log('- NODE_ENV:', process.env.NODE_ENV);
+console.log('- GOOGLE_REDIRECT_URI:', process.env.GOOGLE_REDIRECT_URI);
+console.log('- FRONTEND_URL:', process.env.FRONTEND_URL);
+console.log('- Computed REDIRECT_URI:', REDIRECT_URI);
+
 const oauth2Client = new OAuth2Client(
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
@@ -280,8 +287,16 @@ export const googleAuthCallback = async (req, res) => {
 
     console.log('Step 3: Exchanging code for tokens');
     console.log('[DEBUG] Using redirect URI:', REDIRECT_URI);
-  const { tokens } = await oauth2Client.getToken(code);
-  oauth2Client.setCredentials(tokens);
+    
+    // Crear cliente OAuth2 fresco para asegurar que use la configuración correcta
+    const freshOAuth2Client = new OAuth2Client(
+      GOOGLE_CLIENT_ID,
+      GOOGLE_CLIENT_SECRET,
+      REDIRECT_URI
+    );
+    
+  const { tokens } = await freshOAuth2Client.getToken(code);
+  freshOAuth2Client.setCredentials(tokens);
 
   // Guardar el access_token y refresh_token en el usuario
   const googleAccessToken = tokens.access_token;
@@ -289,7 +304,7 @@ export const googleAuthCallback = async (req, res) => {
     
     console.log('Step 4: Getting user info from Google');
     const oauth2 = google.oauth2({
-      auth: oauth2Client,
+      auth: freshOAuth2Client,
       version: 'v2'
     });
     
