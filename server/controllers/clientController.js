@@ -66,17 +66,8 @@ export const createClient = async (req, res) => {
       });
     }
 
-    console.log('Checking for existing client with email:', email.toLowerCase().trim());
-    const existingClient = await prisma.cliente.findFirst({
-      where: { 
-        email: email.toLowerCase().trim(),
-      }
-    });
-    console.log('Existing client found:', existingClient ? 'YES' : 'NO');
-    if (existingClient) {
-      console.log('Returning 409 - Client already exists');
-      return res.status(409).json({ message: 'Ya existe un cliente con ese email.' });
-    }
+    // Los preparadores pueden crear clientes con emails duplicados sin restricciones
+    console.log('Allowing duplicate emails - no validation needed');
 
     // Convertir fechas a tipo Date si son string y no vacías
     const fechaNacimientoDate = fecha_nacimiento && typeof fecha_nacimiento === 'string' && fecha_nacimiento.length > 0 ? new Date(fecha_nacimiento) : null;

@@ -33,7 +33,7 @@ model cliente {
   cliente_id    Int        @id @default(autoincrement())
   nombre        String     @db.VarChar(100)
   apellido      String     @db.VarChar(100)
-  email         String     @unique @db.VarChar(255)
+  email         String     @db.VarChar(255)
   telefono      String?    @db.VarChar(20)
   canal_ingreso String?    @db.VarChar(50)
   created_by    Int        // NUEVO CAMPO - ID del usuario que creó el cliente
