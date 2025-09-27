@@ -9,8 +9,8 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || (
   process.env.NODE_ENV === 'production' 
-    ? `${process.env.BACKEND_URL}/auth/google/callback`
-    : 'http://localhost:3001/auth/google/callback'
+    ? `${process.env.FRONTEND_URL}/login`
+    : 'http://localhost:5173/login'
 );
 
 const oauth2Client = new OAuth2Client(
@@ -279,6 +279,7 @@ export const googleAuthCallback = async (req, res) => {
     }
 
     console.log('Step 3: Exchanging code for tokens');
+    console.log('[DEBUG] Using redirect URI:', REDIRECT_URI);
   const { tokens } = await oauth2Client.getToken(code);
   oauth2Client.setCredentials(tokens);
 
