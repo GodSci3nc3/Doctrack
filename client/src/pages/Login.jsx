@@ -35,15 +35,38 @@ const Login = () => {
 
   // Manejar el código de autorización de Google cuando regrese
   useEffect(() => {
-    // Obtener parámetros directamente de la URL completa (funciona después del rewrite)
+    // Múltiples formas de obtener los parámetros
     const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    const state = urlParams.get('state');
-    const error = urlParams.get('error');
+    const searchParams = new URLSearchParams(window.location.search);
+    
+    // Intentar diferentes métodos
+    let code = urlParams.get('code') || searchParams.get('code');
+    let state = urlParams.get('state') || searchParams.get('state');
+    let error = urlParams.get('error') || searchParams.get('error');
+    
+    // Fallback: parsear la URL completa manualmente
+    if (!code && window.location.href.includes('code=')) {
+      const href = window.location.href;
+      const codeMatch = href.match(/code=([^&]+)/);
+      const stateMatch = href.match(/state=([^&]+)/);
+      const errorMatch = href.match(/error=([^&]+)/);
+      
+      code = codeMatch ? decodeURIComponent(codeMatch[1]) : null;
+      state = stateMatch ? decodeURIComponent(stateMatch[1]) : null;
+      error = errorMatch ? decodeURIComponent(errorMatch[1]) : null;
+    }
     
     console.log('[DEBUG] URL params:', { code: !!code, state, error });
+    console.log('[DEBUG] Code value:', code);
     console.log('[DEBUG] Current URL:', window.location.href);
     console.log('[DEBUG] Search params:', window.location.search);
+    console.log('[DEBUG] URLSearchParams:', Object.fromEntries(urlParams));
+    console.log('[DEBUG] All URL parts:', {
+      href: window.location.href,
+      search: window.location.search,
+      hash: window.location.hash,
+      pathname: window.location.pathname
+    });
     
     if (error) {
       setLoginError(`Error de Google OAuth: ${error}`);
