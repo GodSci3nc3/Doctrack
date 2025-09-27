@@ -256,11 +256,20 @@ export const googleAuthCallback = async (req, res) => {
   console.log('--- GOOGLE AUTH CALLBACK START ---');
   try {
     console.log('Step 1: Parsing authorization code');
+    console.log('[DEBUG] Request method:', req.method);
+    console.log('[DEBUG] Request body:', req.body);
+    console.log('[DEBUG] Request query:', req.query);
+    console.log('[DEBUG] Request headers:', req.headers);
+    
     // Manejar tanto GET (query) como POST (body)
     const { code } = req.query || req.body || {};
     
+    console.log('[DEBUG] Extracted code:', code ? code.substring(0, 20) + '...' : 'NULL');
+    
     if (!code) {
       console.log('Step 2: No authorization code provided');
+      console.log('[DEBUG] req.body:', req.body);
+      console.log('[DEBUG] req.query:', req.query);
       return res.status(400).json({ message: 'Código de autorización requerido' });
     }
 
