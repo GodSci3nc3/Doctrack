@@ -35,12 +35,15 @@ const Login = () => {
 
   // Manejar el código de autorización de Google cuando regrese
   useEffect(() => {
-    const code = searchParams.get('code');
-    const state = searchParams.get('state');
-    const error = searchParams.get('error');
+    // Obtener parámetros directamente de la URL completa (funciona después del rewrite)
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    const state = urlParams.get('state');
+    const error = urlParams.get('error');
     
     console.log('[DEBUG] URL params:', { code: !!code, state, error });
     console.log('[DEBUG] Current URL:', window.location.href);
+    console.log('[DEBUG] Search params:', window.location.search);
     
     if (error) {
       setLoginError(`Error de Google OAuth: ${error}`);

@@ -16,6 +16,7 @@ export default defineConfig({
       }
     }
   },
+  publicDir: 'public', // Asegurar que public/ se copie al build
   define: {
     'process.env': {
       VITE_API_URL: process.env.VITE_API_URL || 'http://localhost:3001'
