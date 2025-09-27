@@ -262,7 +262,7 @@ export const googleAuthCallback = async (req, res) => {
     console.log('[DEBUG] Request headers:', req.headers);
     
     // Manejar tanto GET (query) como POST (body)
-    const { code } = req.query || req.body || {};
+    const code = req.query.code || req.body.code;
     
     console.log('[DEBUG] Extracted code:', code ? code.substring(0, 20) + '...' : 'NULL');
     
