@@ -38,7 +38,9 @@ export const deleteClient = async (req, res) => {
 };
 export const createClient = async (req, res) => {
   try {
-    console.log('Creating new client for user:', req.user.sub);
+    console.log('=== CREATE CLIENT REQUEST ===');
+    console.log('User ID:', req.user.sub);
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
     const {
       nombre, apellido, email, telefono, canal_ingreso,
       encargado, tipo_proceso, tipo_documento, numero_documento,
@@ -64,12 +66,15 @@ export const createClient = async (req, res) => {
       });
     }
 
+    console.log('Checking for existing client with email:', email.toLowerCase().trim());
     const existingClient = await prisma.cliente.findFirst({
       where: { 
         email: email.toLowerCase().trim(),
       }
     });
+    console.log('Existing client found:', existingClient ? 'YES' : 'NO');
     if (existingClient) {
+      console.log('Returning 409 - Client already exists');
       return res.status(409).json({ message: 'Ya existe un cliente con ese email.' });
     }
 
@@ -114,7 +119,9 @@ export const createClient = async (req, res) => {
     });
     return res.status(201).json(newClient);
   } catch (err) {
-    console.error('Error creating client:', err);
+    console.error('=== ERROR CREATING CLIENT ===');
+    console.error('Error details:', err);
+    console.error('Stack trace:', err.stack);
     return res.status(500).json({ message: 'Error creando cliente' });
   }
 }
