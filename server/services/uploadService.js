@@ -2,7 +2,7 @@ import { google } from 'googleapis';
 import fs from 'fs';
 import multer from 'multer';
 import path from 'path';
-import { getOrCreateUserFolder } from './drivePermissionService.js';
+// import { getOrCreateUserFolder } from './drivePermissionService.js'; // Ya no necesario
 
 // === GOOGLE DRIVE CONFIGURATION ===
 const GOOGLE_DRIVE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -45,11 +45,11 @@ async function uploadToGoogleDrive({ buffer, mimeType, fileName, userId, userEma
   }
 
   try {
-    // Buscar o crear carpeta por usuario usando el token personal (no el del usuario)
-    const folderId = await getOrCreateUserFolder({ userId, userEmail });
-    
-    // Subir el archivo usando el token del usuario (ya tiene permisos)
+    // Usar directamente el token del usuario para todo el proceso
     const drive = google.drive({ version: 'v3', auth });
+    
+    // Buscar o crear carpeta del usuario usando su propio token
+    const folderId = await getOrCreateUserFolderWithUserToken(drive, { userId, userEmail });
     
     // Subir el archivo
     const fileMetadata = {
@@ -184,6 +184,46 @@ export function generateFileName(clienteName, casoId, tipoDocumento, originalExt
   const cleanDocType = tipoDocumento.replace(/[^a-zA-Z0-9]/g, '_');
   
   return `${cleanClientName}_Case${casoId}_${cleanDocType}_${timestamp}${originalExtension}`;
+}
+
+// Función para crear carpeta usando el token del usuario (sin token personal)
+async function getOrCreateUserFolderWithUserToken(drive, { userId, userEmail }) {
+  const parentFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+  const folderName = `doctrack_user_${userId}`;
+  
+  console.log('[DEBUG] Buscando/creando carpeta:', folderName, 'en parent:', parentFolderId);
+  
+  try {
+    // Buscar si ya existe la carpeta
+    const query = `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and '${parentFolderId}' in parents and trashed=false`;
+    const res = await drive.files.list({ q: query, fields: 'files(id,name)' });
+    
+    let folderId = res.data.files?.[0]?.id;
+    
+    if (!folderId) {
+      console.log('[DEBUG] Creando nueva carpeta para usuario:', folderName);
+      // Crear nueva carpeta
+      const folderRes = await drive.files.create({
+        resource: {
+          name: folderName,
+          mimeType: 'application/vnd.google-apps.folder',
+          parents: [parentFolderId]
+        },
+        fields: 'id'
+      });
+      folderId = folderRes.data.id;
+      console.log('[DEBUG] Carpeta creada con ID:', folderId);
+    } else {
+      console.log('[DEBUG] Carpeta existente encontrada con ID:', folderId);
+    }
+    
+    return folderId;
+  } catch (error) {
+    console.error('[DEBUG] Error creando/buscando carpeta:', error.message);
+    // Si falla, usar la carpeta raíz como fallback
+    console.log('[DEBUG] Usando carpeta raíz como fallback:', parentFolderId);
+    return parentFolderId;
+  }
 }
 
 export { uploadToGoogleDrive };
