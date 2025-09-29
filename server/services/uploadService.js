@@ -48,27 +48,16 @@ async function uploadToGoogleDrive({ buffer, mimeType, fileName, userId, userEma
     // Usar directamente el token del usuario para todo el proceso
     const drive = google.drive({ version: 'v3', auth });
     
-    // Con drive.file scope, no podemos verificar acceso a carpetas compartidas
-    // Intentamos directamente crear/buscar la carpeta del usuario
-    const parentFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
-    let folderId = null;
-    
-    try {
-      console.log('[DEBUG] Intentando crear/buscar carpeta del usuario en:', parentFolderId);
-      // Buscar o crear carpeta del usuario usando su propio token
-      folderId = await getOrCreateUserFolderWithUserToken(drive, { userId, userEmail }, parentFolderId);
-      console.log('[DEBUG] Carpeta del usuario obtenida/creada:', folderId);
-    } catch (folderError) {
-      console.error('[DEBUG] Error al crear carpeta del usuario:', folderError.message);
-      console.log('[DEBUG] Subiendo archivo directamente sin carpeta específica');
-      folderId = null; // Subir sin carpeta específica
-    }
+    // Crear/buscar carpeta "Doctrack" en el Drive personal del usuario
+    console.log('[DEBUG] Creando/buscando carpeta Doctrack en Drive personal del usuario:', userEmail);
+    const folderId = await getOrCreateDoctrackFolderInUserDrive(drive, userEmail);
+    console.log('[DEBUG] Carpeta Doctrack obtenida/creada:', folderId);
     
     // Preparar parámetros para subir archivo
     const fileMetadata = {
       name: fileName,
-      description: `Documento subido por Doctrack para usuario ${userEmail}`,
-      parents: folderId ? [folderId] : [] // Si no hay carpeta, subir al root accesible
+      description: `Documento de Doctrack - ${userEmail}`,
+      parents: folderId ? [folderId] : [] // Si no hay carpeta Doctrack, subir a la raíz del Drive personal
     };
 
     const { Readable } = await import('stream');
@@ -89,16 +78,9 @@ async function uploadToGoogleDrive({ buffer, mimeType, fileName, userId, userEma
     
     console.log('[DEBUG] Archivo subido exitosamente con ID:', fileId);
 
-    // Permisos: solo el usuario puede ver/editar su archivo
-    await drive.permissions.create({
-      fileId,
-      resource: {
-        type: 'user',
-        role: 'writer',
-        emailAddress: userEmail
-      },
-      sendNotificationEmail: false
-    });
+    // El archivo ya es privado del usuario por defecto en su Drive personal
+    // No necesitamos agregar permisos adicionales
+    console.log('[DEBUG] Archivo guardado en Drive personal, permisos automáticos aplicados');
     
     return {
       success: true,
@@ -208,42 +190,42 @@ export function generateFileName(clienteName, casoId, tipoDocumento, originalExt
   return `${cleanClientName}_Case${casoId}_${cleanDocType}_${timestamp}${originalExtension}`;
 }
 
-// Función para crear carpeta usando el token del usuario (sin token personal)
-async function getOrCreateUserFolderWithUserToken(drive, { userId, userEmail }, parentFolderId) {
-  const folderName = `Doctrack_${userEmail.split('@')[0]}`;
+// Función para crear carpeta "Doctrack" en el Drive personal del usuario
+async function getOrCreateDoctrackFolderInUserDrive(drive, userEmail) {
+  const folderName = 'Doctrack';
   
-  console.log('[DEBUG] Buscando/creando carpeta del usuario:', folderName, 'en parent:', parentFolderId);
+  console.log('[DEBUG] Buscando/creando carpeta "Doctrack" en Drive personal de:', userEmail);
   
   try {
-    // Buscar si ya existe la carpeta del usuario dentro de la carpeta compartida
-    const query = `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false and '${parentFolderId}' in parents`;
+    // Buscar si ya existe la carpeta "Doctrack" en la raíz del Drive del usuario
+    const query = `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
     const res = await drive.files.list({ q: query, fields: 'files(id,name)' });
     
     let folderId = res.data.files?.[0]?.id;
     
     if (!folderId) {
-      console.log('[DEBUG] Creando nueva carpeta del usuario:', folderName, 'en parent:', parentFolderId);
-      // Crear nueva carpeta dentro de la carpeta compartida
+      console.log('[DEBUG] Creando nueva carpeta "Doctrack" en Drive personal');
+      // Crear nueva carpeta en la raíz del Drive personal del usuario
       const folderRes = await drive.files.create({
         resource: {
           name: folderName,
-          mimeType: 'application/vnd.google-apps.folder',
-          parents: [parentFolderId] // Crear dentro de la carpeta compartida
+          mimeType: 'application/vnd.google-apps.folder'
+          // Sin parents = se crea en la raíz del Drive personal
         },
         fields: 'id'
       });
       folderId = folderRes.data.id;
-      console.log('[DEBUG] Carpeta del usuario creada con ID:', folderId);
+      console.log('[DEBUG] Carpeta "Doctrack" creada con ID:', folderId);
     } else {
-      console.log('[DEBUG] Carpeta del usuario existente encontrada con ID:', folderId);
+      console.log('[DEBUG] Carpeta "Doctrack" existente encontrada con ID:', folderId);
     }
     
     return folderId;
   } catch (error) {
-    console.error('[DEBUG] Error creando/buscando carpeta:', error.message);
-    // Si falla, no especificar parent (se guardará en la raíz del Drive)
-    console.log('[DEBUG] Usando raíz del Drive del usuario como fallback');
-    return null; // null significa raíz del Drive
+    console.error('[DEBUG] Error creando/buscando carpeta "Doctrack":', error.message);
+    // Si falla, usar null para subir a la raíz del Drive
+    console.log('[DEBUG] Usando raíz del Drive personal como fallback');
+    return null;
   }
 }
 
