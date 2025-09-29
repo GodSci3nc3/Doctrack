@@ -252,10 +252,16 @@ const api = {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         
-        // Detectar error de autenticación con Google
+        // Detectar errores de autenticación/permisos con Google
         if (response.status === 401 && errorData.code === 'GOOGLE_AUTH_EXPIRED') {
           const error = new Error('Tu sesión con Google ha expirado. Por favor, vuelve a autenticarte.');
           error.code = 'GOOGLE_AUTH_EXPIRED';
+          throw error;
+        }
+        
+        if (response.status === 403 && errorData.code === 'GOOGLE_SCOPES_INSUFFICIENT') {
+          const error = new Error('Se requieren permisos adicionales de Google Drive. Por favor, autoriza nuevamente.');
+          error.code = 'GOOGLE_SCOPES_INSUFFICIENT';
           throw error;
         }
         
@@ -478,8 +484,8 @@ const DocumentChecklist = ({
     } catch (error) {
       console.error('Error uploading document:', error);
       
-      // Manejar error de autenticación de Google
-      if (error.code === 'GOOGLE_AUTH_EXPIRED') {
+      // Manejar errores de autenticación/permisos de Google
+      if (error.code === 'GOOGLE_AUTH_EXPIRED' || error.code === 'GOOGLE_SCOPES_INSUFFICIENT') {
         setUploadError(error.message);
         setShowGoogleAuthModal(true);
       } else {
@@ -933,10 +939,9 @@ const DocumentChecklist = ({
       {showGoogleAuthModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Sesión Expirada</h3>
+            <h3 className="text-lg font-semibold mb-4">⚠️ Necesitamos permisos adicionales</h3>
             <p className="text-gray-600 mb-6">
-              Tu sesión con Google ha expirado. Para continuar subiendo documentos, 
-              necesitas volver a autenticarte con Google.
+              {uploadError || 'Tu sesión con Google ha expirado. Para continuar subiendo documentos, necesitas volver a autenticarte con Google.'}
             </p>
             <div className="flex space-x-3">
               <button
@@ -1442,10 +1447,9 @@ const Cases = () => {
       {showGoogleAuthModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Sesión Expirada</h3>
+            <h3 className="text-lg font-semibold mb-4">⚠️ Necesitamos permisos adicionales</h3>
             <p className="text-gray-600 mb-6">
-              Tu sesión con Google ha expirado. Para continuar subiendo documentos, 
-              necesitas volver a autenticarte con Google.
+              {uploadError || 'Tu sesión con Google ha expirado. Para continuar subiendo documentos, necesitas volver a autenticarte con Google.'}
             </p>
             <div className="flex space-x-3">
               <button

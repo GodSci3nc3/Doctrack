@@ -302,6 +302,16 @@ export const uploadDocument = async (req, res) => {
         });
       }
       
+      // Detectar errores de permisos insuficientes (scopes)
+      if (uploadError.message?.includes('insufficient authentication scopes') || 
+          uploadError.message?.includes('Request had insufficient authentication scopes')) {
+        return res.status(403).json({
+          success: false,
+          message: 'Se requieren permisos adicionales de Google Drive. Por favor, autoriza nuevamente.',
+          code: 'GOOGLE_SCOPES_INSUFFICIENT'
+        });
+      }
+      
       return res.status(500).json({
         success: false,
         message: 'Error al subir el archivo a Google Drive',
