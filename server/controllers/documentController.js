@@ -281,7 +281,7 @@ export const uploadDocument = async (req, res) => {
     // Subir archivo a la carpeta del usuario en Drive
     let driveFileUrl = null;
     try {
-      driveFileUrl = await uploadToGoogleDrive({
+      const uploadResult = await uploadToGoogleDrive({
         buffer: req.file.buffer,
         mimeType: req.file.mimetype,
         fileName,
@@ -290,6 +290,10 @@ export const uploadDocument = async (req, res) => {
         accessToken: googleToken,
         refreshToken: googleRefreshToken
       });
+      
+      // Extraer solo la URL del resultado
+      driveFileUrl = uploadResult.fileUrl;
+      console.log('[DEBUG] Upload exitoso, URL extraída:', driveFileUrl);
     } catch (uploadError) {
       console.error('Error uploading to Google Drive:', uploadError);
       
