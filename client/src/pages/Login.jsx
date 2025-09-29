@@ -136,7 +136,7 @@ const Login = () => {
     
     console.log('[DEBUG] Redirect URI:', redirectUri);
     
-    // Scopes para login + Google Drive
+    // Scopes para login + Google Drive (acceso a carpetas compartidas)
     const scopes = [
       'openid',
       'profile', 

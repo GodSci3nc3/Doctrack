@@ -48,29 +48,47 @@ async function uploadToGoogleDrive({ buffer, mimeType, fileName, userId, userEma
     // Usar directamente el token del usuario para todo el proceso
     const drive = google.drive({ version: 'v3', auth });
     
-    // Buscar o crear carpeta del usuario usando su propio token
-    const folderId = await getOrCreateUserFolderWithUserToken(drive, { userId, userEmail });
+    // Con drive.file scope, no podemos verificar acceso a carpetas compartidas
+    // Intentamos directamente crear/buscar la carpeta del usuario
+    const parentFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+    let folderId = null;
     
-    // Subir el archivo
+    try {
+      console.log('[DEBUG] Intentando crear/buscar carpeta del usuario en:', parentFolderId);
+      // Buscar o crear carpeta del usuario usando su propio token
+      folderId = await getOrCreateUserFolderWithUserToken(drive, { userId, userEmail }, parentFolderId);
+      console.log('[DEBUG] Carpeta del usuario obtenida/creada:', folderId);
+    } catch (folderError) {
+      console.error('[DEBUG] Error al crear carpeta del usuario:', folderError.message);
+      console.log('[DEBUG] Subiendo archivo directamente sin carpeta específica');
+      folderId = null; // Subir sin carpeta específica
+    }
+    
+    // Preparar parámetros para subir archivo
     const fileMetadata = {
       name: fileName,
-      parents: [folderId]
+      description: `Documento subido por Doctrack para usuario ${userEmail}`,
+      parents: folderId ? [folderId] : [] // Si no hay carpeta, subir al root accesible
     };
+
     const { Readable } = await import('stream');
     const media = {
       mimeType,
       body: Readable.from(buffer)
     };
-    
+
+    console.log('[DEBUG] Subiendo archivo con metadatos:', fileMetadata);
     const res = await drive.files.create({
       resource: fileMetadata,
       media,
       fields: 'id,webViewLink,webContentLink'
     });
-    
+
     const fileId = res.data.id;
     const fileUrl = res.data.webViewLink;
     
+    console.log('[DEBUG] Archivo subido exitosamente con ID:', fileId);
+
     // Permisos: solo el usuario puede ver/editar su archivo
     await drive.permissions.create({
       fileId,
@@ -82,7 +100,11 @@ async function uploadToGoogleDrive({ buffer, mimeType, fileName, userId, userEma
       sendNotificationEmail: false
     });
     
-    return fileUrl;
+    return {
+      success: true,
+      fileId,
+      fileUrl
+    };
     
   } catch (error) {
     console.error('[DEBUG] Error en uploadToGoogleDrive:', error);
@@ -187,42 +209,41 @@ export function generateFileName(clienteName, casoId, tipoDocumento, originalExt
 }
 
 // Función para crear carpeta usando el token del usuario (sin token personal)
-async function getOrCreateUserFolderWithUserToken(drive, { userId, userEmail }) {
-  const parentFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
-  const folderName = `doctrack_user_${userId}`;
+async function getOrCreateUserFolderWithUserToken(drive, { userId, userEmail }, parentFolderId) {
+  const folderName = `Doctrack_${userEmail.split('@')[0]}`;
   
-  console.log('[DEBUG] Buscando/creando carpeta:', folderName, 'en parent:', parentFolderId);
+  console.log('[DEBUG] Buscando/creando carpeta del usuario:', folderName, 'en parent:', parentFolderId);
   
   try {
-    // Buscar si ya existe la carpeta
-    const query = `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and '${parentFolderId}' in parents and trashed=false`;
+    // Buscar si ya existe la carpeta del usuario dentro de la carpeta compartida
+    const query = `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false and '${parentFolderId}' in parents`;
     const res = await drive.files.list({ q: query, fields: 'files(id,name)' });
     
     let folderId = res.data.files?.[0]?.id;
     
     if (!folderId) {
-      console.log('[DEBUG] Creando nueva carpeta para usuario:', folderName);
-      // Crear nueva carpeta
+      console.log('[DEBUG] Creando nueva carpeta del usuario:', folderName, 'en parent:', parentFolderId);
+      // Crear nueva carpeta dentro de la carpeta compartida
       const folderRes = await drive.files.create({
         resource: {
           name: folderName,
           mimeType: 'application/vnd.google-apps.folder',
-          parents: [parentFolderId]
+          parents: [parentFolderId] // Crear dentro de la carpeta compartida
         },
         fields: 'id'
       });
       folderId = folderRes.data.id;
-      console.log('[DEBUG] Carpeta creada con ID:', folderId);
+      console.log('[DEBUG] Carpeta del usuario creada con ID:', folderId);
     } else {
-      console.log('[DEBUG] Carpeta existente encontrada con ID:', folderId);
+      console.log('[DEBUG] Carpeta del usuario existente encontrada con ID:', folderId);
     }
     
     return folderId;
   } catch (error) {
     console.error('[DEBUG] Error creando/buscando carpeta:', error.message);
-    // Si falla, usar la carpeta raíz como fallback
-    console.log('[DEBUG] Usando carpeta raíz como fallback:', parentFolderId);
-    return parentFolderId;
+    // Si falla, no especificar parent (se guardará en la raíz del Drive)
+    console.log('[DEBUG] Usando raíz del Drive del usuario como fallback');
+    return null; // null significa raíz del Drive
   }
 }
 
