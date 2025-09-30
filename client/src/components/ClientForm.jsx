@@ -37,7 +37,53 @@ const ClientForm = ({ onSubmit, initialData = {}, loading = false, error = null,
 
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
-      setForm({ ...initialState, ...initialData });
+      // Formatear fechas para inputs de tipo date
+      const formatDateForInput = (dateValue) => {
+        if (!dateValue) return '';
+        try {
+          const date = new Date(dateValue);
+          if (isNaN(date.getTime())) return '';
+          return date.toISOString().split('T')[0];
+        } catch (error) {
+          console.error('Error formatting date:', error);
+          return '';
+        }
+      };
+
+      const formattedData = {
+        ...initialState,
+        ...initialData,
+        // Formatear fechas específicamente
+        fecha_nacimiento: formatDateForInput(initialData.fecha_nacimiento),
+        migratorio_fecha_entrada_eeuu: formatDateForInput(initialData.migratorio_fecha_entrada_eeuu),
+        migratorio_fecha_vencimiento_estadia: formatDateForInput(initialData.migratorio_fecha_vencimiento_estadia),
+        // Asegurar que los campos de texto no sean null
+        telefono: initialData.telefono || '',
+        encargado: initialData.encargado || '',
+        tipo_proceso: initialData.tipo_proceso || '',
+        tipo_documento: initialData.tipo_documento || '',
+        numero_documento: initialData.numero_documento || '',
+        pais_origen: initialData.pais_origen || '',
+        pais_nacimiento: initialData.pais_nacimiento || '',
+        estado_civil: initialData.estado_civil || '',
+        direccion_actual: initialData.direccion_actual || '',
+        estado: initialData.estado || '',
+        zipcode: initialData.zipcode || '',
+        ciudad: initialData.ciudad || '',
+        migratorio_tipo_proceso: initialData.migratorio_tipo_proceso || '',
+        migratorio_ubicacion_actual: initialData.migratorio_ubicacion_actual || '',
+        migratorio_estatus_actual: initialData.migratorio_estatus_actual || '',
+        migratorio_numero_caso: initialData.migratorio_numero_caso || '',
+        migratorio_via_entrada_eeuu: initialData.migratorio_via_entrada_eeuu || '',
+        migratorio_dependientes: initialData.migratorio_dependientes || '',
+        ocupacion_actual: initialData.ocupacion_actual || '',
+        nivel_estudios: initialData.nivel_estudios || '',
+        forma_contacto: initialData.forma_contacto || '',
+        notas_cliente: initialData.notas_cliente || ''
+      };
+
+      console.log('Setting form data with initial data:', formattedData);
+      setForm(formattedData);
     }
   }, [initialData]);
 

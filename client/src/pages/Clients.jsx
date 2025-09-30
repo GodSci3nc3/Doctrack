@@ -224,6 +224,7 @@ const Clients = () => {
   };
 
   const handleEdit = (client) => {
+    console.log('Editing client:', client);
     setEditingClient(client);
     setShowModal(true);
   };
