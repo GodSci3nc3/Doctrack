@@ -1390,18 +1390,23 @@ const Cases = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Trámite *</label>
-                      <select 
+                      <input 
+                        list="tramite-types"
                         name="tipo_tramite" 
                         value={formData.tipo_tramite} 
-                        onChange={handleInputChange} 
+                        onChange={handleInputChange}
+                        placeholder="Seleccione o escriba un tipo de trámite"
                         className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                           formErrors.tipo_tramite ? 'border-red-300' : 'border-gray-300'
                         }`}
-                      >
-                        <option value="">Seleccione un tipo</option>
+                      />
+                      <datalist id="tramite-types">
                         {tramiteTypes.map(type => <option key={type} value={type}>{type}</option>)}
-                      </select>
+                      </datalist>
                       {formErrors.tipo_tramite && <p className="mt-1 text-sm text-red-600">{formErrors.tipo_tramite}</p>}
+                      <p className="mt-1 text-xs text-gray-500">
+                        Puede seleccionar de la lista o escribir un tipo personalizado
+                      </p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Estado del Caso *</label>
