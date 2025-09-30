@@ -656,17 +656,19 @@ const DocumentChecklist = ({
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
                 <span className="ml-3 text-gray-600">Loading documents...</span>
               </div>
-            ) : requiredDocuments.length === 0 ? (
-              <div className="text-center py-12">
-                <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">No document requirements</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  No specific documents are required for this process type.
-                </p>
-              </div>
             ) : (
               <div className="space-y-4">
-                {requiredDocuments.map((requiredDoc, index) => {
+                {/* Required Documents Section */}
+                {requiredDocuments.length === 0 ? (
+                  <div className="text-center py-8 mb-6">
+                    <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">No predefined document requirements</h3>
+                    <p className="mt-1 text-sm text-gray-500">
+                      This is a custom process type. Add your documents using the button above.
+                    </p>
+                  </div>
+                ) : (
+                  requiredDocuments.map((requiredDoc, index) => {
                   const status = getDocumentStatus(requiredDoc);
                   const existingDoc = Array.isArray(documents) ? documents.find(doc => doc.tipo === requiredDoc.documento) : null;
                   const isUploading = uploadingDocs.has(requiredDoc.documento);
@@ -800,9 +802,9 @@ const DocumentChecklist = ({
                       </div>
                     </div>
                   );
-                })}
+                }))}
                 
-                {/* Show custom documents that are not in required list */}
+                {/* Custom Documents Section - Always visible */}
                 {Array.isArray(documents) && documents.filter(doc => 
                   !requiredDocuments.find(reqDoc => reqDoc.documento === doc.tipo)
                 ).map((customDoc, index) => (
