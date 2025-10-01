@@ -111,13 +111,34 @@ const StatsCards = ({ dashboardData }) => {
 // Componente para el resumen de clientes
 const ClientesSummary = ({ clientes }) => {
   const navigate = useNavigate();
-  
-  const defaultClientes = [
-    { nombre_completo: 'María González', dias_registro: 1 },
-    { nombre_completo: 'Carlos Rivera', dias_registro: 2 },
-    { nombre_completo: 'Ana Martínez', dias_registro: 3 },
-    { nombre_completo: 'José López', dias_registro: 4 }
-  ];
+
+  if (!clientes || clientes.length === 0) {
+    return (
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-gray-900">Resumen de Clientes</h3>
+          <button 
+            onClick={() => navigate('/clients')}
+            className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+          >
+            Ver todos los clientes
+          </button>
+        </div>
+        <p className="text-gray-500 text-sm mb-6">
+          Vista general de la base de clientes, incluyendo nuevos registros y actividad reciente.
+        </p>
+        <div className="text-center py-8">
+          <p className="text-gray-500 text-sm">No hay clientes registrados aún</p>
+          <button 
+            onClick={() => navigate('/clients')}
+            className="mt-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
+          >
+            Crear primer cliente
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
@@ -134,7 +155,7 @@ const ClientesSummary = ({ clientes }) => {
         Vista general de la base de clientes, incluyendo nuevos registros y actividad reciente.
       </p>
       <div className="space-y-4">
-        {(clientes?.slice(0, 4) || defaultClientes).map((cliente, idx) => (
+        {clientes.slice(0, 4).map((cliente, idx) => (
           <div key={idx} className="flex items-center justify-between py-2">
             <span className="text-sm text-gray-700 font-medium">{cliente.nombre_completo}</span>
             <span className="text-xs text-gray-500">
@@ -150,23 +171,39 @@ const ClientesSummary = ({ clientes }) => {
 // Componente para el resumen de casos
 const CasosSummary = ({ casos }) => {
   const navigate = useNavigate();
-  
-  const defaultCases = [
-    { cliente: 'María González', estado: 'En proceso', fecha: '15/01/2025' },
-    { cliente: 'Carlos Rivera', estado: 'Documentos', fecha: '14/01/2025' },
-    { cliente: 'Ana Martínez', estado: 'Revisión', fecha: '13/01/2025' },
-    { cliente: 'José López', estado: 'Aprobado', fecha: '12/01/2025' }
-  ];
+
+  if (!casos || casos.length === 0) {
+    return (
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-gray-900">Resumen de Casos</h3>
+          <button 
+            onClick={() => navigate('/cases')}
+            className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+          >
+            Ver todos los casos
+          </button>
+        </div>
+        <div className="text-center py-8">
+          <p className="text-gray-500 text-sm">No hay casos registrados aún</p>
+          <button 
+            onClick={() => navigate('/cases')}
+            className="mt-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
+          >
+            Crear primer caso
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const getStatusColor = (estado) => {
     const colors = {
-      'Aprobado': 'bg-green-100 text-green-800',
-      'COMPLETADO': 'bg-green-100 text-green-800',
-      'En proceso': 'bg-blue-100 text-blue-800',
+      'APROBADO': 'bg-green-100 text-green-800',
       'EN_PROCESO': 'bg-blue-100 text-blue-800',
       'PENDIENTE': 'bg-yellow-100 text-yellow-800',
-      'Documentos': 'bg-yellow-100 text-yellow-800',
-      'Revisión': 'bg-yellow-100 text-yellow-800'
+      'RECHAZADO': 'bg-red-100 text-red-800',
+      'CERRADO': 'bg-gray-100 text-gray-800'
     };
     return colors[estado] || 'bg-gray-100 text-gray-800';
   };
@@ -183,10 +220,10 @@ const CasosSummary = ({ casos }) => {
         </button>
       </div>
       <p className="text-gray-500 text-sm mb-6">
-        Estado actual de los casos migratorios, próximos plazos y casos recientes.
+        Vista general de casos en progreso y su estado actual.
       </p>
       <div className="space-y-4">
-        {(casos || defaultCases).map((caso, idx) => (
+        {casos.slice(0, 4).map((caso, idx) => (
           <div key={idx} className="flex items-center justify-between py-2">
             <div className="flex items-center space-x-3">
               <span className="text-sm text-gray-700 font-medium">{caso.cliente}</span>
@@ -204,11 +241,21 @@ const CasosSummary = ({ casos }) => {
 
 // Componente para checklist pendientes
 const ChecklistPendientes = ({ checklist }) => {
-  const defaultChecklist = [
-    { tarea: 'Revisar documentos de identidad', cliente: 'María González', fecha_limite: '2025-01-20', prioridad: 'alta' },
-    { tarea: 'Completar formulario I-485', cliente: 'Carlos Rivera', fecha_limite: '2025-01-18', prioridad: 'media' },
-    { tarea: 'Agendar entrevista', cliente: 'Ana Martínez', fecha_limite: '2025-01-25', prioridad: 'baja' }
-  ];
+  if (!checklist || checklist.length === 0) {
+    return (
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-gray-900">Checklist Pendientes</h3>
+        </div>
+        <p className="text-gray-500 text-sm mb-6">
+          Tareas y documentos pendientes para completar casos.
+        </p>
+        <div className="text-center py-8">
+          <p className="text-gray-500 text-sm">No hay tareas pendientes</p>
+        </div>
+      </div>
+    );
+  }
 
   const getPriorityColor = (prioridad) => {
     const colors = {
@@ -231,7 +278,7 @@ const ChecklistPendientes = ({ checklist }) => {
         Tareas y documentos pendientes para completar casos.
       </p>
       <div className="space-y-3">
-        {(checklist || defaultChecklist).map((item, idx) => (
+        {checklist.map((item, idx) => (
           <div key={idx} className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg">
             <div className="flex items-center space-x-3">
               <div className="w-4 h-4 border-2 border-gray-300 rounded"></div>
@@ -254,11 +301,34 @@ const ChecklistPendientes = ({ checklist }) => {
 const Dashboard = () => {
   const { dashboardData, isLoading, loadDashboardData } = useDashboardData();
   const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredData, setFilteredData] = useState(null);
 
   // Cargar datos al montar el componente
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  // Filtrar datos cuando cambie el término de búsqueda
+  useEffect(() => {
+    if (!dashboardData || !searchTerm.trim()) {
+      setFilteredData(dashboardData);
+      return;
+    }
+
+    const term = searchTerm.toLowerCase();
+    const filtered = {
+      ...dashboardData,
+      clientesRecientes: dashboardData.clientesRecientes?.filter(cliente => 
+        cliente.nombre_completo?.toLowerCase().includes(term)
+      ) || [],
+      casosRecientes: dashboardData.casosRecientes?.filter(caso => 
+        caso.cliente?.toLowerCase().includes(term) || 
+        caso.tipo?.toLowerCase().includes(term)
+      ) || []
+    };
+    setFilteredData(filtered);
+  }, [dashboardData, searchTerm]);
 
   if (isLoading) {
     return (
@@ -278,50 +348,57 @@ const Dashboard = () => {
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
       </div>
 
-      {/* Header con botones */}
+      {/* Header con buscador y botones */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 flex items-center space-x-2">
             <input
               type="text"
-              placeholder="Buscar..."
-              className="border-0 focus:ring-0 focus:outline-none text-sm bg-transparent"
+              placeholder="Buscar clientes o casos..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="border-0 focus:ring-0 focus:outline-none text-sm bg-transparent w-64"
             />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            )}
           </div>
-          <button className="w-10 h-10 bg-white rounded-lg border border-gray-200 flex items-center justify-center shadow-sm">
-            <div className="w-6 h-6 bg-gray-300 rounded-full"></div>
-          </button>
         </div>
         
         <div className="flex items-center space-x-3">
           <button 
-            onClick={() => navigate('/clientes/nuevo')}
+            onClick={() => navigate('/clients')}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 text-sm font-medium"
           >
             <PlusIcon className="w-4 h-4" />
-            <span>New Client</span>
+            <span>Nuevo Cliente</span>
           </button>
           <button 
-            onClick={() => navigate('/casos/nuevo')}
+            onClick={() => navigate('/cases')}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 text-sm font-medium"
           >
             <PlusIcon className="w-4 h-4" />
-            <span>New Case</span>
+            <span>Nuevo Caso</span>
           </button>
         </div>
       </div>
 
       {/* Cards principales */}
-      <StatsCards dashboardData={dashboardData} />
+      <StatsCards dashboardData={filteredData || dashboardData} />
 
       {/* Secciones inferiores - Responsive */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ClientesSummary clientes={dashboardData?.clientesRecientes} />
-        <CasosSummary casos={dashboardData?.casosRecientes} />
+        <ClientesSummary clientes={(filteredData || dashboardData)?.clientesRecientes} />
+        <CasosSummary casos={(filteredData || dashboardData)?.casosRecientes} />
       </div>
 
       {/* Checklist Pendientes */}
-      <ChecklistPendientes checklist={dashboardData?.checklistPendientes} />
+      <ChecklistPendientes checklist={(filteredData || dashboardData)?.checklistPendientes} />
     </div>
   );
 };
