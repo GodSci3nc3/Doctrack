@@ -37,7 +37,7 @@ export const getDashboardStats = async (req, res) => {
 
       const casosCompletados = await prisma.caso.count({ 
         where: { 
-          estado: 'COMPLETADO',
+          estado: 'APROBADO',
           cliente: {
             created_by: userId
           }
@@ -177,7 +177,7 @@ export const getCasesResume = async (req, res) => {
         { id: 1, cliente: 'María González', tipo: 'Residencia', estado: 'PENDIENTE', fecha: '15/01/2025' },
         { id: 2, cliente: 'Carlos Rivera', tipo: 'Ciudadanía', estado: 'EN_PROCESO', fecha: '14/01/2025' },
         { id: 3, cliente: 'Ana Martínez', tipo: 'Visa trabajo', estado: 'PENDIENTE', fecha: '13/01/2025' },
-        { id: 4, cliente: 'José López', tipo: 'Reunificación', estado: 'COMPLETADO', fecha: '12/01/2025' }
+        { id: 4, cliente: 'José López', tipo: 'Reunificación', estado: 'APROBADO', fecha: '12/01/2025' }
       ];
       return res.json(casosMock);
     }

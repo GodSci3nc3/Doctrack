@@ -235,7 +235,7 @@ export const updateCase = async (req, res) => {
     
     if (tipo_tramite !== undefined) updateData.tipo_tramite = tipo_tramite;
     if (estado !== undefined) {
-      const estadosValidos = ['PENDIENTE', 'EN_PROCESO', 'COMPLETADO', 'CANCELADO'];
+      const estadosValidos = ['PENDIENTE', 'EN_PROCESO', 'APROBADO', 'RECHAZADO', 'CERRADO'];
       if (!estadosValidos.includes(estado)) {
         return res.status(400).json({
           message: 'Estado inválido',
@@ -244,7 +244,7 @@ export const updateCase = async (req, res) => {
       }
       updateData.estado = estado;
       
-      if (estado === 'COMPLETADO' && !existingCase.fecha_aprobacion) {
+      if (estado === 'APROBADO' && !existingCase.fecha_aprobacion) {
         updateData.fecha_aprobacion = new Date();
       }
     }

@@ -1005,7 +1005,7 @@ const Cases = () => {
     'Peticiones Familiares'
   ];
   
-  const estadoOptions = ['PENDIENTE', 'EN_PROCESO', 'COMPLETADO', 'CANCELADO'];
+  const estadoOptions = ['PENDIENTE', 'EN_PROCESO', 'APROBADO', 'RECHAZADO', 'CERRADO'];
 
   useEffect(() => {
     fetchInitialData();
@@ -1167,10 +1167,11 @@ const Cases = () => {
 
   const getStatusColor = (estado) => {
     const colors = {
-      'COMPLETADO': 'bg-green-100 text-green-800',
       'PENDIENTE': 'bg-yellow-100 text-yellow-800',
       'EN_PROCESO': 'bg-blue-100 text-blue-800',
-      'CANCELADO': 'bg-red-100 text-red-800'
+      'APROBADO': 'bg-green-100 text-green-800',
+      'RECHAZADO': 'bg-red-100 text-red-800',
+      'CERRADO': 'bg-gray-100 text-gray-800'
     };
     return colors[estado] || 'bg-gray-100 text-gray-800';
   };
@@ -1179,8 +1180,9 @@ const Cases = () => {
     const statusMap = {
       'PENDIENTE': 'Pendiente',
       'EN_PROCESO': 'En Proceso',
-      'COMPLETADO': 'Completado',
-      'CANCELADO': 'Cancelado'
+      'APROBADO': 'Aprobado',
+      'RECHAZADO': 'Rechazado',
+      'CERRADO': 'Cerrado'
     };
     return statusMap[estado] || estado;
   };
