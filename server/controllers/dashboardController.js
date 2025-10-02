@@ -67,13 +67,10 @@ export const getDashboardStats = async (req, res) => {
       
     } catch (dbError) {
       console.error('Database error in stats:', dbError);
-      const mockStats = {
-        clientes: 5,
-        casosActivos: 2,
-        casosCompletados: 3,
-        documentosPendientes: 1
-      };
-      return res.json(mockStats);
+      return res.status(500).json({ 
+        message: 'Error obteniendo estadísticas',
+        error: dbError.message 
+      });
     }
 
   } catch (err) {
@@ -84,10 +81,14 @@ export const getDashboardStats = async (req, res) => {
 
 export const getClientsResume = async (req, res) => {
   try {
-    console.log('Getting clients summary...');
+    console.log('Getting clients summary for user:', req.user.sub);
+    const userId = req.user.sub;
     
     try {
       const clientes = await prisma.cliente.findMany({
+        where: {
+          created_by: userId
+        },
         take: 10,
         orderBy: {
           created_at: 'desc'
@@ -123,13 +124,10 @@ export const getClientsResume = async (req, res) => {
       
     } catch (dbError) {
       console.error('Database error getting clients:', dbError);
-      const mockClientes = [
-        { cliente_id: 1, nombre_completo: 'María González', email: 'maria@email.com', dias_registro: 1, canal_ingreso: 'Web' },
-        { cliente_id: 2, nombre_completo: 'Carlos Rivera', email: 'carlos@email.com', dias_registro: 2, canal_ingreso: 'Referido' },
-        { cliente_id: 3, nombre_completo: 'Ana Martínez', email: 'ana@email.com', dias_registro: 3, canal_ingreso: 'Web' },
-        { cliente_id: 4, nombre_completo: 'José López', email: 'jose@email.com', dias_registro: 4, canal_ingreso: 'Teléfono' }
-      ];
-      return res.json(mockClientes);
+      return res.status(500).json({ 
+        message: 'Error obteniendo resumen de clientes',
+        error: dbError.message 
+      });
     }
 
   } catch (err) {
@@ -140,10 +138,16 @@ export const getClientsResume = async (req, res) => {
 
 export const getCasesResume = async (req, res) => {
   try {
-    console.log('Getting cases summary...');
+    console.log('Getting cases summary for user:', req.user.sub);
+    const userId = req.user.sub;
     
     try {
       const casos = await prisma.caso.findMany({
+        where: {
+          cliente: {
+            created_by: userId
+          }
+        },
         take: 10,
         orderBy: {
           created_at: 'desc'
@@ -173,13 +177,10 @@ export const getCasesResume = async (req, res) => {
       
     } catch (dbError) {
       console.error('Database error getting cases:', dbError);
-      const casosMock = [
-        { id: 1, cliente: 'María González', tipo: 'Residencia', estado: 'PENDIENTE', fecha: '15/01/2025' },
-        { id: 2, cliente: 'Carlos Rivera', tipo: 'Ciudadanía', estado: 'EN_PROCESO', fecha: '14/01/2025' },
-        { id: 3, cliente: 'Ana Martínez', tipo: 'Visa trabajo', estado: 'PENDIENTE', fecha: '13/01/2025' },
-        { id: 4, cliente: 'José López', tipo: 'Reunificación', estado: 'APROBADO', fecha: '12/01/2025' }
-      ];
-      return res.json(casosMock);
+      return res.status(500).json({ 
+        message: 'Error obteniendo resumen de casos',
+        error: dbError.message 
+      });
     }
 
   } catch (err) {
@@ -190,12 +191,18 @@ export const getCasesResume = async (req, res) => {
 
 export const getPendingChecklist = async (req, res) => {
   try {
-    console.log('Getting pending checklist...');
+    console.log('Getting pending checklist for user:', req.user.sub);
+    const userId = req.user.sub;
     
     try {
       const documentosPendientes = await prisma.documento.findMany({
         where: {
-          fecha_recibido: null
+          fecha_recibido: null,
+          caso: {
+            cliente: {
+              created_by: userId
+            }
+          }
         },
         take: 10,
         orderBy: {
@@ -235,30 +242,10 @@ export const getPendingChecklist = async (req, res) => {
       
     } catch (dbError) {
       console.error('Database error getting checklist:', dbError);
-      const mockChecklist = [
-        {
-          id: 1,
-          cliente: 'María González',
-          tarea: 'Revisar documentos de identidad',
-          fecha_limite: '2025-01-20',
-          prioridad: 'alta'
-        },
-        {
-          id: 2,
-          cliente: 'Carlos Rivera',
-          tarea: 'Completar formulario I-485',
-          fecha_limite: '2025-01-18',
-          prioridad: 'media'
-        },
-        {
-          id: 3,
-          cliente: 'Ana Martínez',
-          tarea: 'Agendar entrevista',
-          fecha_limite: '2025-01-25',
-          prioridad: 'baja'
-        }
-      ];
-      return res.json(mockChecklist);
+      return res.status(500).json({ 
+        message: 'Error obteniendo checklist pendientes',
+        error: dbError.message 
+      });
     }
 
   } catch (err) {
