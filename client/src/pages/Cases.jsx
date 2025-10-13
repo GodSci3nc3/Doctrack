@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   PlusIcon, 
   PencilIcon, 
@@ -10,57 +10,1002 @@ import {
   UserIcon,
   TagIcon,
   ClipboardDocumentCheckIcon,
-  ArrowLeftIcon
+  ArrowLeftIcon,
+  CalendarIcon,
+  ClockIcon,
+  ArrowUpTrayIcon,
+  FolderIcon,
+  EyeIcon
 } from '@heroicons/react/24/outline';
-import { useNavigate } from 'react-router-dom';
 
-const axios = {
-  get: async (url) => {
-    const response = await fetch(`http://localhost:3001${url}`);
-    return { data: await response.json() };
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+// Document requirements by process type - UPDATED WITH CORRECT PROCESSES
+const DOCUMENT_REQUIREMENTS = {
+  'Asilo Afirmativo': [
+    { tipo: 'Formulario', documento: 'I-589' },
+    { tipo: 'Evidencia', documento: 'Declaración personal' },
+    { tipo: 'Evidencia', documento: 'Pasaporte' },
+    { tipo: 'Evidencia', documento: 'Evidencia persecución' },
+    { tipo: 'Evidencia', documento: 'Documentos entrada a EE.UU.' },
+    { tipo: 'Evidencia', documento: 'Cartas de apoyo' },
+    { tipo: 'Evidencia', documento: 'Informes de país' }
+  ],
+  'Asilo Defensivo': [
+    { tipo: 'Formulario', documento: 'I-589' },
+    { tipo: 'Evidencia', documento: 'Declaración personal' },
+    { tipo: 'Evidencia', documento: 'Pasaporte' },
+    { tipo: 'Evidencia', documento: 'Evidencia persecución' },
+    { tipo: 'Evidencia', documento: 'I-94' },
+    { tipo: 'Evidencia', documento: 'Informes de país' },
+    { tipo: 'Evidencia', documento: 'Cartas de testigos' }
+  ],
+  'Cambio de Estatus (COS)': [
+    { tipo: 'Formulario', documento: 'I-539' },
+    { tipo: 'Evidencia', documento: 'Pasaporte' },
+    { tipo: 'Evidencia', documento: 'Visa actual' },
+    { tipo: 'Evidencia', documento: 'I-94' },
+    { tipo: 'Evidencia', documento: 'Carta de motivos personales' },
+    { tipo: 'Evidencia', documento: 'Prueba de fondos' },
+    { tipo: 'Evidencia', documento: 'Prueba de estatus legal' },
+    { tipo: 'Evidencia', documento: 'Carta aceptación escuela' }
+  ],
+  'E-1 Comerciante': [
+    { tipo: 'Formulario', documento: 'DS-160' },
+    { tipo: 'Formulario', documento: 'I-129 (suplemento E)' },
+    { tipo: 'Evidencia', documento: 'Pasaporte' },
+    { tipo: 'Evidencia', documento: 'Nacionalidad tratado' },
+    { tipo: 'Evidencia', documento: 'Documentación comercio' },
+    { tipo: 'Evidencia', documento: 'Contratos/facturas/shipping docs' },
+    { tipo: 'Evidencia', documento: 'Evidencia operaciones regulares' }
+  ],
+  'E-2 Inversionista': [
+    { tipo: 'Formulario', documento: 'DS-160' },
+    { tipo: 'Formulario', documento: 'I-129 (suplemento E)' },
+    { tipo: 'Evidencia', documento: 'Pasaporte' },
+    { tipo: 'Evidencia', documento: 'Nacionalidad tratado' },
+    { tipo: 'Evidencia', documento: 'Evidencia inversión' },
+    { tipo: 'Evidencia', documento: 'Plan de negocios' },
+    { tipo: 'Evidencia', documento: 'Prueba negocio activo' }
+  ],
+  'EB-2 NIW': [
+    { tipo: 'Formulario', documento: 'I-140' },
+    { tipo: 'Evidencia', documento: 'Declaración Personal' },
+    { tipo: 'Evidencia', documento: 'Títulos académicos' },
+    { tipo: 'Evidencia', documento: 'Equivalencia Títulos' },
+    { tipo: 'Evidencia', documento: 'Experiencia laboral' },
+    { tipo: 'Evidencia', documento: 'Cartas recomendación' },
+    { tipo: 'Evidencia', documento: 'Cartas de interés' },
+    { tipo: 'Evidencia', documento: 'Plan impacto nacional' },
+    { tipo: 'Evidencia', documento: 'Pasaporte' },
+    { tipo: 'Evidencia', documento: 'Pruebas estatus legal' }
+  ],
+  'H1B1 Consular': [
+    { tipo: 'Formulario', documento: 'DS-160' },
+    { tipo: 'Evidencia', documento: 'Oferta laboral' },
+    { tipo: 'Evidencia', documento: 'Título universitario/equivalencia' },
+    { tipo: 'Evidencia', documento: 'Pasaporte' },
+    { tipo: 'Evidencia', documento: 'LCA aprobado' },
+    { tipo: 'Evidencia', documento: 'Arraigo' },
+    { tipo: 'Evidencia', documento: 'Carta empleador' }
+  ],
+  'H1B1 Extensión': [
+    { tipo: 'Formulario', documento: 'I-129' },
+    { tipo: 'Formulario', documento: 'I-539' },
+    { tipo: 'Evidencia', documento: 'Carta de empleo vigente' },
+    { tipo: 'Evidencia', documento: 'Contratos/nóminas' },
+    { tipo: 'Evidencia', documento: 'Título universitario' },
+    { tipo: 'Evidencia', documento: 'Pasaporte' },
+    { tipo: 'Evidencia', documento: 'Prueba de estatus legal' },
+    { tipo: 'Evidencia', documento: 'LCA vigente' },
+    { tipo: 'Evidencia', documento: 'LCA aprobado' }
+  ],
+  'L-1 Transferencia': [
+    { tipo: 'Formulario', documento: 'I-129 (suplemento L)' },
+    { tipo: 'Formulario', documento: 'DS-160' },
+    { tipo: 'Evidencia', documento: 'Plan de negocios' },
+    { tipo: 'Evidencia', documento: 'Carta transferencia' },
+    { tipo: 'Evidencia', documento: 'Organigrama' },
+    { tipo: 'Evidencia', documento: 'Evidencia relación empresas' },
+    { tipo: 'Evidencia', documento: 'Comprobante empleo extranjero' },
+    { tipo: 'Evidencia', documento: 'Pasaporte' }
+  ],
+  'Peticiones Familiares': [
+    { tipo: 'Formulario', documento: 'I-130' },
+    { tipo: 'Formulario', documento: 'I-485' },
+    { tipo: 'Formulario', documento: 'I-864' },
+    { tipo: 'Formulario', documento: 'I-765' },
+    { tipo: 'Formulario', documento: 'I-693' },
+    { tipo: 'Evidencia', documento: 'Certificado matrimonio' },
+    { tipo: 'Evidencia', documento: 'Certificado nacimiento' },
+    { tipo: 'Evidencia', documento: 'Pasaporte beneficiario' },
+    { tipo: 'Evidencia', documento: 'Pasaporte solicitante' },
+    { tipo: 'Evidencia', documento: 'Visa' },
+    { tipo: 'Evidencia', documento: 'I-94' },
+    { tipo: 'Evidencia', documento: 'Evidencia relación genuina' },
+    { tipo: 'Evidencia', documento: 'Declaraciones de impuestos' },
+    { tipo: 'Evidencia', documento: 'Prueba de ingresos patrocinador' }
+  ]
+};
+
+const api = {
+  get: async (endpoint) => {
+    try {
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { data };
+    } catch (error) {
+      console.error(`GET ${endpoint} failed:`, error);
+      throw error;
+    }
   },
-  post: async (url, data) => {
-    const response = await fetch(`http://localhost:3001${url}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    return { data: await response.json() };
+  
+  post: async (endpoint, data) => {
+    try {
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      return { data: result };
+    } catch (error) {
+      console.error(`POST ${endpoint} failed:`, error);
+      throw error;
+    }
   },
-  put: async (url, data) => {
-    const response = await fetch(`http://localhost:3001${url}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    return { data: await response.json() };
+  
+  put: async (endpoint, data) => {
+    try {
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      return { data: result };
+    } catch (error) {
+      console.error(`PUT ${endpoint} failed:`, error);
+      throw error;
+    }
   },
-  delete: async (url) => {
-    const response = await fetch(`http://localhost:3001${url}`, {
-      method: 'DELETE'
-    });
-    return { data: await response.json() };
+  
+  delete: async (endpoint) => {
+    try {
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { data };
+    } catch (error) {
+      console.error(`DELETE ${endpoint} failed:`, error);
+      throw error;
+    }
+  },
+  
+  patch: async (endpoint, data) => {
+    try {
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      return { data: result };
+    } catch (error) {
+      console.error(`PATCH ${endpoint} failed:`, error);
+      throw error;
+    }
+  },
+    upload: async (endpoint, formData) => {
+    try {
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData // No establecer Content-Type para FormData
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        
+        // Detectar errores de autenticación/permisos con Google
+        if (response.status === 401 && errorData.code === 'GOOGLE_AUTH_EXPIRED') {
+          const error = new Error('Tu sesión con Google ha expirado. Por favor, vuelve a autenticarte.');
+          error.code = 'GOOGLE_AUTH_EXPIRED';
+          throw error;
+        }
+        
+        if (response.status === 403 && errorData.code === 'GOOGLE_SCOPES_INSUFFICIENT') {
+          const error = new Error('Se requieren permisos adicionales de Google Drive. Por favor, autoriza nuevamente.');
+          error.code = 'GOOGLE_SCOPES_INSUFFICIENT';
+          throw error;
+        }
+        
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      return { data: result };
+    } catch (error) {
+      console.error(`UPLOAD ${endpoint} failed:`, error);
+      throw error;
+    }
   }
 };
 
+// Document Checklist Component
+const DocumentChecklist = ({ 
+  caseData, 
+  onBack, 
+  showNotification 
+}) => {
+  const [showGoogleAuthModal, setShowGoogleAuthModal] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+  const handleDeleteDocument = async (documentoId) => {
+    if (window.confirm('¿Seguro que deseas eliminar este documento?')) {
+      try {
+        await api.delete(`/api/documentos/${documentoId}`);
+        showNotification('success', 'Documento eliminado');
+        loadDocuments();
+      } catch (error) {
+        showNotification('error', 'Error al eliminar documento: ' + error.message);
+      }
+    }
+  };
+
+  const handleGoogleReauth = () => {
+    // Redirigir directamente al endpoint de backend
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    
+    // Guardar la URL actual para redirigir después del login
+    sessionStorage.setItem('reauth_redirect', window.location.pathname);
+    
+    // Redirigir al endpoint de Google Auth del backend
+    window.location.href = `${API_URL}/auth/google`;
+  };
+
+  const [showCustomDocModal, setShowCustomDocModal] = useState(false);
+  const [documents, setDocuments] = useState([]);
+  const [newDoc, setNewDoc] = useState({ nombre: '', tipo: '', archivo: null });
+  const [loading, setLoading] = useState(true);
+  const [uploadingDocs, setUploadingDocs] = useState(new Set());
+  const fileInputRefs = useRef({});
+
+  useEffect(() => {
+    if (caseData) {
+      loadDocuments();
+      // Si el trámite no está en la lista, inicia vacía
+      if (!DOCUMENT_REQUIREMENTS[caseData.tipo_tramite]) {
+        setDocuments([]);
+      }
+    }
+  }, [caseData]);
+
+  // Añadir documento manual
+  const handleAddManualDocument = async () => {
+    if (!newDoc.nombre.trim() || !newDoc.tipo.trim()) {
+      showNotification('error', 'Completa todos los campos obligatorios');
+      return;
+    }
+    try {
+      await api.post('/api/documentos', {
+        caso_id: caseData.caso_id,
+        tipo: newDoc.tipo,
+        nombre_personalizado: newDoc.nombre
+      });
+      showNotification('success', 'Documento manual agregado');
+      setNewDoc({ nombre: '', tipo: '', archivo: null });
+      setShowCustomDocModal(false);
+      loadDocuments();
+    } catch (error) {
+      showNotification('error', 'Error al agregar documento: ' + error.message);
+    }
+  };
+
+  // Render para añadir documento manual (scope principal)
+  function renderManualDocumentForm() {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+        <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md border border-gray-200">
+          <h4 className="font-semibold mb-4 text-gray-800">Añadir documento personalizado</h4>
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Nombre</label>
+              <input type="text" className="w-full border rounded px-2 py-1" value={newDoc.nombre} onChange={e => setNewDoc(d => ({ ...d, nombre: e.target.value }))} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Tipo</label>
+              <input type="text" className="w-full border rounded px-2 py-1" value={newDoc.tipo} onChange={e => setNewDoc(d => ({ ...d, tipo: e.target.value }))} />
+            </div>
+          </div>
+          <div className="flex justify-end space-x-2 mt-6">
+            <button onClick={() => setShowCustomDocModal(false)} className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Cancelar</button>
+            <button onClick={handleAddManualDocument} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Agregar</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const loadDocuments = async () => {
+    try {
+      setLoading(true);
+  const response = await api.get(`/api/casos/${caseData.caso_id}/documentos`);
+  // Defensive: always assign an array
+  const docs = Array.isArray(response.data.documentos) ? response.data.documentos : (Array.isArray(response.data) ? response.data : []);
+  setDocuments(docs);
+  console.log('[CASES] setDocuments:', docs, 'typeof:', typeof docs, 'isArray:', Array.isArray(docs));
+    } catch (error) {
+      console.error('Error loading documents:', error);
+      showNotification('error', 'Error al cargar documentos: ' + error.message);
+      setDocuments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getDocumentStatus = (requiredDoc) => {
+    // Defensive log
+    console.log('[CASES] getDocumentStatus documents:', documents, 'typeof:', typeof documents, 'isArray:', Array.isArray(documents));
+    const safeDocs = Array.isArray(documents) ? documents : [];
+    const existingDoc = safeDocs.find(doc => 
+      doc.tipo === requiredDoc.documento
+    );
+    
+    if (!existingDoc) {
+      return { status: 'pending', text: 'Pending', color: 'text-red-600', bgColor: 'bg-red-50', icon: ClockIcon };
+    }
+    
+    if (existingDoc.fecha_recibido) {
+      return { status: 'completed', text: 'Completed', color: 'text-green-600', bgColor: 'bg-green-50', icon: CheckCircleIcon };
+    }
+    
+    return { status: 'in-review', text: 'In Review', color: 'text-orange-600', bgColor: 'bg-orange-50', icon: ExclamationTriangleIcon };
+  };
+
+  const handleMarkAsReceived = async (documentId) => {
+    try {
+      await api.patch(`/api/documentos/${documentId}/recibir`);
+      showNotification('success', 'Documento marcado como recibido');
+      loadDocuments();
+    } catch (error) {
+      console.error('Error marking document as received:', error);
+      showNotification('error', 'Error al marcar documento como recibido: ' + error.message);
+    }
+  };
+
+  const handleAddDocument = async (requiredDoc) => {
+    try {
+      await api.post('/api/documentos', {
+        caso_id: caseData.caso_id,
+        tipo: requiredDoc.documento,
+        fecha_enviado: null
+      });
+      showNotification('success', 'Documento agregado exitosamente');
+      loadDocuments();
+    } catch (error) {
+      console.error('Error adding document:', error);
+      showNotification('error', 'Error al agregar documento: ' + error.message);
+    }
+  };
+
+  // NEW: File upload functionality with improved error handling
+  const handleFileUpload = async (requiredDoc, file, existingDoc = null) => {
+    if (!file) {
+      showNotification('error', 'No se seleccionó ningún archivo.');
+      return;
+    }
+
+    // Validate file size (10MB max)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      showNotification('error', 'El archivo es muy grande. Máximo 10MB permitido.');
+      if (fileInputRefs.current[requiredDoc.documento]) fileInputRefs.current[requiredDoc.documento].value = '';
+      return;
+    }
+
+    // Validate file type
+    const allowedTypes = [
+      'application/pdf',
+      'image/jpeg',
+      'image/png',
+      'image/jpg',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    
+    if (!allowedTypes.includes(file.type)) {
+      showNotification('error', 'Tipo de archivo no permitido. Use PDF, JPG, PNG o DOC.');
+      if (fileInputRefs.current[requiredDoc.documento]) fileInputRefs.current[requiredDoc.documento].value = '';
+      return;
+    }
+
+    const docKey = requiredDoc.documento;
+    setUploadingDocs(prev => new Set(prev).add(docKey));
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('caso_id', caseData.caso_id.toString());
+      formData.append('tipo', requiredDoc.documento);
+      formData.append('nombre_personalizado', existingDoc?.nombre_personalizado || requiredDoc.documento);
+      formData.append('cliente_nombre', `${caseData.cliente?.nombre} ${caseData.cliente?.apellido}`.trim());
+
+      // NEW: Upload API call
+      const response = await api.upload('/api/documentos/upload', formData);
+      
+      showNotification('success', 'Documento subido exitosamente');
+      await loadDocuments();
+      
+    } catch (error) {
+      console.error('Error uploading document:', error);
+      
+      // Manejar errores de autenticación/permisos de Google
+      if (error.code === 'GOOGLE_AUTH_EXPIRED' || error.code === 'GOOGLE_SCOPES_INSUFFICIENT') {
+        setUploadError(error.message);
+        setShowGoogleAuthModal(true);
+      } else {
+        showNotification('error', 'Error al subir documento: ' + (error?.message || 'Error desconocido'));
+      }
+    } finally {
+      // Reset file input
+      if (fileInputRefs.current[docKey]) {
+        fileInputRefs.current[docKey].value = '';
+      }
+      setUploadingDocs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(docKey);
+        return newSet;
+      });
+    }
+  };
+
+  const triggerFileInput = (docKey) => {
+    if (fileInputRefs.current[docKey]) {
+      fileInputRefs.current[docKey].click();
+    }
+  };
+
+  // Function to initialize all required documents for the case
+  const handleInitializeDocuments = async () => {
+    try {
+      const requiredDocuments = DOCUMENT_REQUIREMENTS[caseData?.tipo_tramite] || [];
+      const existingTypes = new Set(documents.map(doc => doc.tipo));
+      
+      const documentsToCreate = requiredDocuments.filter(doc => !existingTypes.has(doc.documento));
+      
+      for (const requiredDoc of documentsToCreate) {
+        await api.post('/api/documentos', {
+          caso_id: caseData.caso_id,
+          tipo: requiredDoc.documento,
+          fecha_enviado: null,
+          fecha_recibido: null
+        });
+      }
+      
+      showNotification('success', `${documentsToCreate.length} documentos inicializados`);
+      loadDocuments();
+    } catch (error) {
+      console.error('Error initializing documents:', error);
+      showNotification('error', 'Error al inicializar documentos: ' + error.message);
+    }
+  };
+
+  const requiredDocuments = DOCUMENT_REQUIREMENTS[caseData?.tipo_tramite] || [];
+  const completedCount = requiredDocuments.filter(doc => {
+    const status = getDocumentStatus(doc);
+    return status.status === 'completed';
+  }).length;
+
+  if (!caseData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No hay caso seleccionado</h3>
+          <p className="mt-1 text-sm text-gray-500">Por favor selecciona un caso para ver sus documentos.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {showCustomDocModal && renderManualDocumentForm()}
+      {/* El checklist será el único lugar donde se muestran todos los documentos, incluidos los personalizados */}
+      {(!documents || documents.length === 0) && (
+        <div className="text-center py-8">
+          <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No hay documentos en este caso</h3>
+          <p className="mt-1 text-sm text-gray-500">Agrega documentos usando el botón en el checklist.</p>
+        </div>
+      )}
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center">
+              <button
+                onClick={onBack}
+                className="flex items-center text-purple-600 hover:text-purple-800 font-medium"
+              >
+                <ArrowLeftIcon className="w-5 h-5 mr-2" />
+                Back to Cases
+              </button>
+              <h1 className="text-2xl font-bold text-purple-600 ml-4">
+                Immigration Case Documents
+              </h1>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                <UserIcon className="w-6 h-6 text-purple-600" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Case Info Card */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                Case #{caseData.caso_id} - {caseData.cliente?.nombre} {caseData.cliente?.apellido}
+              </h2>
+              <div className="flex items-center space-x-6 text-sm text-gray-600">
+                <div className="flex items-center">
+                  <TagIcon className="w-4 h-4 mr-1" />
+                  <span>{caseData.tipo_tramite}</span>
+                </div>
+                <div className="flex items-center">
+                  <CalendarIcon className="w-4 h-4 mr-1" />
+                  <span>Created: {new Date(caseData.fecha_creacion).toLocaleDateString('en-US')}</span>
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-purple-600">
+                {completedCount}/{requiredDocuments.length}
+              </div>
+              <div className="text-sm text-gray-500">Documents Complete</div>
+              <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                <div 
+                  className="bg-purple-600 h-2 rounded-full transition-all duration-300" 
+                  style={{ width: `${requiredDocuments.length > 0 ? (completedCount / requiredDocuments.length) * 100 : 0}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Document Checklist Card */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="p-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-purple-600">
+                Document Checklist
+              </h2>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowCustomDocModal(true)}
+                  className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  <PlusIcon className="w-4 h-4 mr-2" />
+                  Añadir documento personalizado
+                </button>
+                {documents.length === 0 && requiredDocuments.length > 0 && (
+                  <button
+                    onClick={handleInitializeDocuments}
+                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <PlusIcon className="w-4 h-4 mr-2" />
+                    Inicializar documentos requeridos
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center items-center h-48">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                <span className="ml-3 text-gray-600">Loading documents...</span>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Required Documents Section */}
+                {requiredDocuments.length === 0 ? (
+                  <div className="text-center py-8 mb-6">
+                    <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">No predefined document requirements</h3>
+                    <p className="mt-1 text-sm text-gray-500">
+                      This is a custom process type. Add your documents using the button above.
+                    </p>
+                  </div>
+                ) : (
+                  requiredDocuments.map((requiredDoc, index) => {
+                  const status = getDocumentStatus(requiredDoc);
+                  const existingDoc = Array.isArray(documents) ? documents.find(doc => doc.tipo === requiredDoc.documento) : null;
+                  const isUploading = uploadingDocs.has(requiredDoc.documento);
+                  
+                  return (
+                    <div 
+                      key={index}
+                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-center space-x-4 flex-1">
+                        <div className="flex-shrink-0">
+                          <DocumentTextIcon className="w-6 h-6 text-gray-400" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-medium text-gray-900">
+                            {existingDoc?.nombre_personalizado || requiredDoc.documento}
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            {requiredDoc.tipo} {existingDoc?.nombre_personalizado !== requiredDoc.documento && `(${requiredDoc.documento})`}
+                          </p>
+                          {existingDoc && (
+                            <div className="flex flex-col space-y-1 mt-2 text-xs text-gray-500">
+                              {existingDoc.fecha_enviado && (
+                                <span>
+                                  <strong>Fecha de carga:</strong> {new Date(existingDoc.fecha_enviado).toLocaleString()}
+                                </span>
+                              )}
+                              {existingDoc.tipo_archivo && (
+                                <span>
+                                  <strong>Tipo:</strong> {existingDoc.tipo_archivo}
+                                </span>
+                              )}
+                              {existingDoc.tamaño_bytes && (
+                                <span>
+                                  <strong>Tamaño:</strong> {(existingDoc.tamaño_bytes / 1024).toFixed(2)} KB
+                                </span>
+                              )}
+                              {existingDoc.url_documento && (
+                                <a
+                                  href={existingDoc.url_documento}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center px-2 py-1 bg-purple-100 text-purple-700 rounded hover:bg-purple-200 transition-colors"
+                                >
+                                  <EyeIcon className="w-4 h-4 mr-1" />
+                                  Ver documento
+                                </a>
+                              )}
+                              {existingDoc.fecha_recibido && (
+                                <span>Received: {new Date(existingDoc.fecha_recibido).toLocaleDateString()}</span>
+                              )}
+                              {existingDoc.nombre_archivo_original && (
+                                <span>File: {existingDoc.nombre_archivo_original}</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-4">
+                        <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${status.bgColor} ${status.color}`}>
+                          <status.icon className="w-4 h-4 mr-1" />
+                          {status.text}
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          {/* View Document Button */}
+                          {existingDoc && existingDoc.url_documento && (
+                            <a
+                              href={existingDoc.url_documento}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center px-2 py-1 text-blue-600 hover:text-blue-800 transition-colors"
+                              title="View document"
+                            >
+                              <EyeIcon className="w-4 h-4" />
+                            </a>
+                          )}
+
+                          {/* Mark as Received Button */}
+                          {existingDoc && !existingDoc.fecha_recibido && (
+                            <button
+                              onClick={() => handleMarkAsReceived(existingDoc.documento_id)}
+                              className="inline-flex items-center px-3 py-1.5 bg-green-50 text-green-700 text-sm font-medium rounded-md hover:bg-green-100 transition-colors"
+                            >
+                              <CheckCircleIcon className="w-4 h-4 mr-1" />
+                              Mark Received
+                            </button>
+                          )}
+
+                          {/* Upload Button */}
+                          <div className="relative">
+                            <input
+                              type="file"
+                              ref={el => fileInputRefs.current[requiredDoc.documento] = el}
+                              onChange={(e) => handleFileUpload(requiredDoc, e.target.files[0], existingDoc)}
+                              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                              className="hidden"
+                            />
+                            <button
+                              onClick={() => triggerFileInput(requiredDoc.documento)}
+                              disabled={isUploading}
+                              className="inline-flex items-center px-3 py-1.5 bg-blue-50 text-blue-700 text-sm font-medium rounded-md hover:bg-blue-100 transition-colors disabled:opacity-50"
+                              title={existingDoc?.url_documento ? "Replace file" : "Upload file"}
+                            >
+                              {isUploading ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700 mr-1"></div>
+                                  Uploading...
+                                </>
+                              ) : (
+                                <>
+                                  <ArrowUpTrayIcon className="w-4 h-4 mr-1" />
+                                  {existingDoc?.url_documento ? 'Replace' : 'Upload'}
+                                </>
+                              )}
+                            </button>
+                          </div>
+
+                          {/* Delete Document Button */}
+                          {existingDoc && (
+                            <button
+                              onClick={() => handleDeleteDocument(existingDoc.documento_id)}
+                              className="inline-flex items-center px-2 py-1 text-red-600 hover:text-red-800 transition-colors"
+                              title="Delete document"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }))}
+                
+                {/* Custom Documents Section - Always visible */}
+                {Array.isArray(documents) && documents.filter(doc => 
+                  !requiredDocuments.find(reqDoc => reqDoc.documento === doc.tipo)
+                ).map((customDoc, index) => (
+                  <div 
+                    key={`custom-${customDoc.documento_id || index}`}
+                    className="flex items-center justify-between p-4 border border-purple-200 rounded-lg hover:shadow-md transition-shadow bg-purple-50"
+                  >
+                    <div className="flex items-center space-x-4 flex-1">
+                      <div className="flex-shrink-0">
+                        <DocumentTextIcon className="w-6 h-6 text-purple-400" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-medium text-gray-900">
+                          {customDoc.nombre_personalizado || customDoc.tipo}
+                        </h3>
+                        <p className="text-sm text-purple-600">
+                          Documento personalizado - {customDoc.tipo}
+                        </p>
+                        <div className="flex flex-col space-y-1 mt-2 text-xs text-gray-500">
+                          {customDoc.fecha_enviado && (
+                            <span>
+                              <strong>Fecha de carga:</strong> {new Date(customDoc.fecha_enviado).toLocaleString()}
+                            </span>
+                          )}
+                          {customDoc.url_documento && (
+                            <a
+                              href={customDoc.url_documento}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center px-2 py-1 bg-purple-100 text-purple-700 rounded hover:bg-purple-200 transition-colors"
+                            >
+                              <EyeIcon className="w-4 h-4 mr-1" />
+                              Ver documento
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${customDoc.fecha_recibido ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-600'}`}>
+                        {customDoc.fecha_recibido ? <CheckCircleIcon className="w-4 h-4 mr-1" /> : <ClockIcon className="w-4 h-4 mr-1" />}
+                        {customDoc.fecha_recibido ? 'Completed' : 'In Review'}
+                      </div>
+
+                      {/* View Document Button */}
+                      {customDoc.url_documento && (
+                        <a
+                          href={customDoc.url_documento}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center px-2 py-1 text-blue-600 hover:text-blue-800 transition-colors"
+                          title="View document"
+                        >
+                          <EyeIcon className="w-4 h-4" />
+                        </a>
+                      )}
+
+                      {/* Mark as Received Button */}
+                      {!customDoc.fecha_recibido && (
+                        <button
+                          onClick={() => handleMarkAsReceived(customDoc.documento_id)}
+                          className="inline-flex items-center px-3 py-1.5 bg-green-50 text-green-700 text-sm font-medium rounded-md hover:bg-green-100 transition-colors"
+                        >
+                          <CheckCircleIcon className="w-4 h-4 mr-1" />
+                          Mark Received
+                        </button>
+                      )}
+
+                      {/* Upload Button for custom docs */}
+                      <div className="relative">
+                        <input
+                          type="file"
+                          ref={el => fileInputRefs.current[`custom-${customDoc.documento_id}`] = el}
+                          onChange={(e) => handleFileUpload({ documento: customDoc.tipo }, e.target.files[0], customDoc)}
+                          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                          className="hidden"
+                        />
+                        <button
+                          onClick={() => triggerFileInput(`custom-${customDoc.documento_id}`)}
+                          className="inline-flex items-center px-3 py-1.5 bg-blue-50 text-blue-700 text-sm font-medium rounded-md hover:bg-blue-100 transition-colors"
+                          title={customDoc.url_documento ? "Replace file" : "Upload file"}
+                        >
+                          <ArrowUpTrayIcon className="w-4 h-4 mr-1" />
+                          {customDoc.url_documento ? 'Replace' : 'Upload'}
+                        </button>
+                      </div>
+
+                      {/* Delete Document Button */}
+                      <button
+                        onClick={() => handleDeleteDocument(customDoc.documento_id)}
+                        className="inline-flex items-center px-2 py-1 text-red-600 hover:text-red-800 transition-colors"
+                        title="Delete document"
+                      >
+                        <TrashIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Statistics Card */}
+        <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Document Progress</h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="text-center p-4 bg-gray-50 rounded-lg">
+              <div className="text-2xl font-bold text-gray-900">{requiredDocuments.length}</div>
+              <div className="text-sm text-gray-500">Total Required</div>
+            </div>
+            <div className="text-center p-4 bg-green-50 rounded-lg">
+              <div className="text-2xl font-bold text-green-600">{completedCount}</div>
+              <div className="text-sm text-gray-500">Completed</div>
+            </div>
+            <div className="text-center p-4 bg-orange-50 rounded-lg">
+              <div className="text-2xl font-bold text-orange-600">
+                {documents.filter(doc => doc.fecha_enviado && !doc.fecha_recibido).length}
+              </div>
+              <div className="text-sm text-gray-500">In Review</div>
+            </div>
+            <div className="text-center p-4 bg-red-50 rounded-lg">
+              <div className="text-2xl font-bold text-red-600">
+                {requiredDocuments.length - documents.length}
+              </div>
+              <div className="text-sm text-gray-500">Missing</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal de reautenticación con Google */}
+      {showGoogleAuthModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">⚠️ Necesitamos permisos adicionales</h3>
+            <p className="text-gray-600 mb-6">
+              {uploadError || 'Tu sesión con Google ha expirado. Para continuar subiendo documentos, necesitas volver a autenticarte con Google.'}
+            </p>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowGoogleAuthModal(false)}
+                className="flex-1 px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleGoogleReauth}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center justify-center"
+              >
+                <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
+                  <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Reautenticar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Main Cases Component
 const Cases = () => {
-  const navigate = useNavigate();
   const [cases, setCases] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingCase, setEditingCase] = useState(null);
+  const [selectedCase, setSelectedCase] = useState(null);
+  const [showDocuments, setShowDocuments] = useState(false);
   const [notification, setNotification] = useState({ show: false, type: '', message: '' });
+  const [showGoogleAuthModal, setShowGoogleAuthModal] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
   const [formData, setFormData] = useState({
-    clientId: '',
-    type: '',
-    status: '',
-    checklist: ''
+    cliente_id: '',
+    tipo_tramite: '',
+    estado: 'PENDIENTE'
   });
   const [formErrors, setFormErrors] = useState({});
 
-  const caseTypes = ['Asilo Político', 'Residencia Permanente', 'Visa de Trabajo H-1B', 'Ciudadanía', 'Otro'];
-  const caseStates = ['Iniciado', 'En revisión', 'Aprobado', 'Rechazado', 'Pendiente de entrevista'];
+  // UPDATED: Only the 10 correct process types from your document
+  const tramiteTypes = [
+    'Asilo Afirmativo',
+    'Asilo Defensivo', 
+    'Cambio de Estatus (COS)',
+    'E-1 Comerciante',
+    'E-2 Inversionista',
+    'EB-2 NIW',
+    'H1B1 Consular',
+    'H1B1 Extensión',
+    'L-1 Transferencia',
+    'Peticiones Familiares'
+  ];
+  
+  const estadoOptions = ['PENDIENTE', 'EN_PROCESO', 'APROBADO', 'RECHAZADO', 'CERRADO'];
 
   useEffect(() => {
     fetchInitialData();
@@ -69,15 +1014,42 @@ const Cases = () => {
   const fetchInitialData = async () => {
     try {
       setLoading(true);
-      const [casesRes, clientsRes] = await Promise.all([
-        axios.get('/api/cases'),
-        axios.get('/api/clients')
+      
+      const [casesRes, clientsRes] = await Promise.allSettled([
+        api.get('/api/casos'),
+        api.get('/api/clientes')
       ]);
-      setCases(casesRes.data);
-      setClients(clientsRes.data);
+      
+      if (casesRes.status === 'fulfilled') {
+        let casesData = [];
+        if (casesRes.value.data && Array.isArray(casesRes.value.data.casos)) {
+          casesData = casesRes.value.data.casos;
+        } else if (Array.isArray(casesRes.value.data)) {
+          casesData = casesRes.value.data;
+        }
+        setCases(casesData);
+      } else {
+        console.error('Error fetching cases:', casesRes.reason);
+        setCases([]);
+        showNotification('error', 'Error al cargar los casos: ' + casesRes.reason.message);
+      }
+      
+      if (clientsRes.status === 'fulfilled') {
+        let clientsData = [];
+        if (Array.isArray(clientsRes.value.data)) {
+          clientsData = clientsRes.value.data;
+        }
+        setClients(clientsData);
+      } else {
+        console.error('Error fetching clients:', clientsRes.reason);
+        setClients([]);
+        showNotification('error', 'Error al cargar los clientes: ' + clientsRes.reason.message);
+      }
     } catch (error) {
-      showNotification('error', 'Error al cargar los datos iniciales');
-      console.error('Error fetching initial data:', error);
+      console.error('Error loading initial data:', error);
+      showNotification('error', 'Error al cargar los datos iniciales: ' + error.message);
+      setCases([]);
+      setClients([]);
     } finally {
       setLoading(false);
     }
@@ -90,11 +1062,22 @@ const Cases = () => {
     }, 4000);
   };
 
+  const handleGoogleReauth = () => {
+    // Redirigir directamente al endpoint de backend
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    
+    // Guardar la URL actual para redirigir después del login
+    sessionStorage.setItem('reauth_redirect', window.location.pathname);
+    
+    // Redirigir al endpoint de Google Auth del backend
+    window.location.href = `${API_URL}/auth/google`;
+  };
+
   const validateForm = () => {
     const errors = {};
-    if (!formData.clientId) errors.clientId = 'El cliente es requerido';
-    if (!formData.type.trim()) errors.type = 'El tipo de caso es requerido';
-    if (!formData.status.trim()) errors.status = 'El estado del caso es requerido';
+    if (!formData.cliente_id) errors.cliente_id = 'El cliente es requerido';
+    if (!formData.tipo_tramite.trim()) errors.tipo_tramite = 'El tipo de trámite es requerido';
+    if (!formData.estado.trim()) errors.estado = 'El estado del caso es requerido';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -104,55 +1087,68 @@ const Cases = () => {
 
     try {
       const payload = {
-        ...formData,
-        clientId: parseInt(formData.clientId)
+        cliente_id: parseInt(formData.cliente_id),
+        tipo_tramite: formData.tipo_tramite.trim(),
+        estado: formData.estado
       };
 
+      let response;
       if (editingCase) {
-        const response = await axios.put(`/api/cases/${editingCase.id}`, payload);
-        setCases(cases.map(c => c.id === editingCase.id ? response.data : c));
+        response = await api.put(`/api/casos/${editingCase.caso_id}`, payload);
+        setCases(cases.map(c => c.caso_id === editingCase.caso_id ? response.data : c));
         showNotification('success', 'Caso actualizado exitosamente');
       } else {
-        const response = await axios.post('/api/cases', payload);
-        setCases([...cases, response.data]);
+        response = await api.post('/api/casos', payload);
+        setCases([response.data, ...cases]);
         showNotification('success', 'Caso creado exitosamente');
       }
+      
       closeModal();
-      fetchInitialData(); // Refrescar los datos
     } catch (error) {
-      showNotification('error', `Error al ${editingCase ? 'actualizar' : 'crear'} el caso`);
       console.error('Error submitting case:', error);
+      showNotification('error', `Error al ${editingCase ? 'actualizar' : 'crear'} el caso: ${error.message}`);
     }
   };
 
   const handleEdit = (caseData) => {
     setEditingCase(caseData);
     setFormData({
-      clientId: caseData.clientId,
-      type: caseData.type,
-      status: caseData.status,
-      checklist: caseData.checklist || ''
+      cliente_id: caseData.cliente_id || '',
+      tipo_tramite: caseData.tipo_tramite || '',
+      estado: caseData.estado || 'PENDIENTE'
     });
     setShowModal(true);
   };
 
   const handleDelete = async (caseId) => {
-    if (window.confirm('¿Está seguro que desea eliminar este caso?')) {
+    if (window.confirm('¿Está seguro que desea eliminar este caso? Esta acción también eliminará todos los documentos asociados.')) {
       try {
-        await axios.delete(`/api/cases/${caseId}`);
-        setCases(cases.filter(c => c.id !== caseId));
+        await api.delete(`/api/casos/${caseId}`);
+        setCases(cases.filter(c => c.caso_id !== caseId));
         showNotification('success', 'Caso eliminado exitosamente');
       } catch (error) {
-        showNotification('error', 'Error al eliminar el caso');
         console.error('Error deleting case:', error);
+        showNotification('error', 'Error al eliminar el caso: ' + error.message);
       }
+    }
+  };
+
+  const handleViewDocuments = async (caseData) => {
+    try {
+      // Load full case data with client information
+      const response = await api.get(`/api/casos/${caseData.caso_id}`);
+      setSelectedCase(response.data);
+      setShowDocuments(true);
+    } catch (error) {
+      console.error('Error loading case details:', error);
+      showNotification('error', 'Error al cargar detalles del caso: ' + error.message);
     }
   };
 
   const closeModal = () => {
     setShowModal(false);
     setEditingCase(null);
-    setFormData({ clientId: '', type: '', status: '', checklist: '' });
+    setFormData({ cliente_id: '', tipo_tramite: '', estado: 'PENDIENTE' });
     setFormErrors({});
   };
 
@@ -164,10 +1160,70 @@ const Cases = () => {
     }
   };
 
+  const getClientName = (clienteId) => {
+    const client = clients.find(c => c.cliente_id === clienteId);
+    return client ? `${client.nombre} ${client.apellido}` : 'Cliente no encontrado';
+  };
+
+  const getStatusColor = (estado) => {
+    const colors = {
+      'PENDIENTE': 'bg-yellow-100 text-yellow-800',
+      'EN_PROCESO': 'bg-blue-100 text-blue-800',
+      'APROBADO': 'bg-green-100 text-green-800',
+      'RECHAZADO': 'bg-red-100 text-red-800',
+      'CERRADO': 'bg-gray-100 text-gray-800'
+    };
+    return colors[estado] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getStatusText = (estado) => {
+    const statusMap = {
+      'PENDIENTE': 'Pendiente',
+      'EN_PROCESO': 'En Proceso',
+      'APROBADO': 'Aprobado',
+      'RECHAZADO': 'Rechazado',
+      'CERRADO': 'Cerrado'
+    };
+    return statusMap[estado] || estado;
+  };
+
+  const formatDate = (dateString) => {
+    try {
+      return new Date(dateString).toLocaleDateString('es-ES');
+    } catch (error) {
+      return 'Fecha inválida';
+    }
+  };
+
+  const getDocumentosCount = (caseData) => {
+    if (caseData.documento && Array.isArray(caseData.documento)) {
+      return caseData.documento.length;
+    }
+    return 0;
+  };
+
+  // If showing documents, render DocumentChecklist
+  if (showDocuments && selectedCase) {
+    return (
+      <DocumentChecklist
+        caseData={selectedCase}
+        onBack={() => {
+          setShowDocuments(false);
+          setSelectedCase(null);
+        }}
+        showNotification={showNotification}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {notification.show && (
-        <div className={`fixed top-4 right-4 z-50 flex items-center p-4 rounded-lg shadow-lg ${notification.type === 'success' ? 'bg-green-100 border-l-4 border-green-500 text-green-700' : 'bg-red-100 border-l-4 border-red-500 text-red-700'}`}>
+        <div className={`fixed top-4 right-4 z-50 flex items-center p-4 rounded-lg shadow-lg ${
+          notification.type === 'success' 
+            ? 'bg-green-100 border-l-4 border-green-500 text-green-700' 
+            : 'bg-red-100 border-l-4 border-red-500 text-red-700'
+        }`}>
           {notification.type === 'success' ? <CheckCircleIcon className="w-5 h-5 mr-2" /> : <ExclamationTriangleIcon className="w-5 h-5 mr-2" />}
           <span className="font-medium">{notification.message}</span>
         </div>
@@ -175,20 +1231,16 @@ const Cases = () => {
 
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-        <div className="flex items-center">
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors duration-200 mr-4"
-            >
-              <ArrowLeftIcon className="w-5 h-5 mr-2" />
-              Volver al Panel
-            </button>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Gestión de Casos</h1>
-            <p className="text-gray-600 mt-1">Administra los casos de tus clientes</p>
+          <div className="flex items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Gestión de Casos</h1>
+              <p className="text-gray-600 mt-1">Administra los casos de tus clientes</p>
+            </div>
           </div>
-          </div>
-          <button onClick={() => setShowModal(true)} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 shadow-md">
+          <button 
+            onClick={() => setShowModal(true)} 
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 shadow-md"
+          >
             <PlusIcon className="w-5 h-5 mr-2" />
             Nuevo Caso
           </button>
@@ -198,6 +1250,7 @@ const Cases = () => {
           {loading ? (
             <div className="flex justify-center items-center h-64">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              <span className="ml-4 text-gray-600">Cargando datos...</span>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -205,44 +1258,87 @@ const Cases = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo de Caso</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo de Trámite</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Checklist</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Documentos</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fechas</th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {cases.map((caseData) => (
-                    <tr key={caseData.id} className="hover:bg-gray-50 transition-colors duration-150">
+                    <tr 
+                      key={caseData.caso_id} 
+                      className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+                      onClick={() => handleViewDocuments(caseData)}
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <UserIcon className="h-6 w-6 text-blue-600" />
-                          <div className="ml-4 text-sm font-medium text-gray-900">{caseData.client?.name || 'Cliente no encontrado'}</div>
+                          <div className="flex-shrink-0 h-10 w-10">
+                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                              <UserIcon className="h-6 w-6 text-blue-600" />
+                            </div>
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">
+                              {getClientName(caseData.cliente_id)}
+                            </div>
+                            <div className="text-sm text-gray-500">Caso ID: {caseData.caso_id}</div>
+                          </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <TagIcon className="h-4 w-4 text-gray-400 mr-2" />
-                          <span className="text-sm text-gray-900">{caseData.type}</span>
+                          <span className="text-sm text-gray-900">{caseData.tipo_tramite || 'No especificado'}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${caseData.status === 'Aprobado' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                          {caseData.status}
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(caseData.estado)}`}>
+                          {getStatusText(caseData.estado || 'PENDIENTE')}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-start">
-                           <ClipboardDocumentCheckIcon className="h-4 w-4 text-gray-400 mr-2 mt-0.5 flex-shrink-0" />
-                          <span className="text-sm text-gray-900">{caseData.checklist}</span>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <ClipboardDocumentCheckIcon className="h-4 w-4 text-gray-400 mr-2" />
+                          <span className="text-sm text-gray-900">{getDocumentosCount(caseData)} docs</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="space-y-1">
+                          <div className="flex items-center text-sm text-gray-900">
+                            <CalendarIcon className="h-4 w-4 text-gray-400 mr-2" />
+                            <span className="text-xs text-gray-500">Creado:</span>
+                            <span className="ml-1">{caseData.fecha_creacion ? formatDate(caseData.fecha_creacion) : 'N/A'}</span>
+                          </div>
+                          {caseData.fecha_aprobacion && (
+                            <div className="flex items-center text-sm text-gray-600">
+                              <span className="text-xs text-gray-500 ml-6">Aprobado:</span>
+                              <span className="ml-1">{formatDate(caseData.fecha_aprobacion)}</span>
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
-                          <button onClick={() => handleEdit(caseData)} className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors duration-150" title="Editar caso">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEdit(caseData);
+                            }} 
+                            className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors duration-150" 
+                            title="Editar caso"
+                          >
                             <PencilIcon className="h-4 w-4" />
                           </button>
-                          <button onClick={() => handleDelete(caseData.id)} className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors duration-150" title="Eliminar caso">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(caseData.caso_id);
+                            }} 
+                            className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors duration-150" 
+                            title="Eliminar caso"
+                          >
                             <TrashIcon className="h-4 w-4" />
                           </button>
                         </div>
@@ -251,7 +1347,7 @@ const Cases = () => {
                   ))}
                 </tbody>
               </table>
-              {cases.length === 0 && (
+              {cases.length === 0 && !loading && (
                 <div className="text-center py-12">
                   <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
                   <h3 className="mt-2 text-sm font-medium text-gray-900">No hay casos</h3>
@@ -268,7 +1364,7 @@ const Cases = () => {
           <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
             <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <div onSubmit={handleSubmit}>
+              <div>
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg leading-6 font-medium text-gray-900">{editingCase ? 'Editar Caso' : 'Nuevo Caso'}</h3>
@@ -279,39 +1375,110 @@ const Cases = () => {
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Cliente *</label>
-                      <select name="clientId" value={formData.clientId} onChange={handleInputChange} className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${formErrors.clientId ? 'border-red-300' : 'border-gray-300'}`}>
+                      <select 
+                        name="cliente_id" 
+                        value={formData.cliente_id} 
+                        onChange={handleInputChange} 
+                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          formErrors.cliente_id ? 'border-red-300' : 'border-gray-300'
+                        }`}
+                      >
                         <option value="">Seleccione un cliente</option>
-                        {clients.map(client => <option key={client.id} value={client.id}>{client.name}</option>)}
+                        {clients.map(client => 
+                          <option key={client.cliente_id} value={client.cliente_id}>
+                            {`${client.nombre} ${client.apellido}`} - {client.email}
+                          </option>
+                        )}
                       </select>
-                      {formErrors.clientId && <p className="mt-1 text-sm text-red-600">{formErrors.clientId}</p>}
+                      {formErrors.cliente_id && <p className="mt-1 text-sm text-red-600">{formErrors.cliente_id}</p>}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Caso *</label>
-                      <select name="type" value={formData.type} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                        {caseTypes.map(type => <option key={type} value={type}>{type}</option>)}
-                      </select>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Trámite *</label>
+                      <input 
+                        list="tramite-types"
+                        name="tipo_tramite" 
+                        value={formData.tipo_tramite} 
+                        onChange={handleInputChange}
+                        placeholder="Seleccione o escriba un tipo de trámite"
+                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          formErrors.tipo_tramite ? 'border-red-300' : 'border-gray-300'
+                        }`}
+                      />
+                      <datalist id="tramite-types">
+                        {tramiteTypes.map(type => <option key={type} value={type}>{type}</option>)}
+                      </datalist>
+                      {formErrors.tipo_tramite && <p className="mt-1 text-sm text-red-600">{formErrors.tipo_tramite}</p>}
+                      <p className="mt-1 text-xs text-gray-500">
+                        Puede seleccionar de la lista o escribir un tipo personalizado
+                      </p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Estado del Caso *</label>
-                      <select name="status" value={formData.status} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                        {caseStates.map(state => <option key={state} value={state}>{state}</option>)}
+                      <select 
+                        name="estado" 
+                        value={formData.estado} 
+                        onChange={handleInputChange} 
+                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          formErrors.estado ? 'border-red-300' : 'border-gray-300'
+                        }`}
+                      >
+                        {estadoOptions.map(state => 
+                          <option key={state} value={state}>{getStatusText(state)}</option>
+                        )}
                       </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Checklist de Documentos</label>
-                      <textarea name="checklist" value={formData.checklist} onChange={handleInputChange} rows={3} className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${formErrors.checklist ? 'border-red-300' : 'border-gray-300'}`} placeholder="Ej: Pasaporte, Visa, Formulario I-94"></textarea>
+                      {formErrors.estado && <p className="mt-1 text-sm text-red-600">{formErrors.estado}</p>}
                     </div>
                   </div>
                 </div>
                 <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                  <button type="button" onClick={handleSubmit} className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm transition-colors duration-200">
+                  <button 
+                    type="button" 
+                    onClick={handleSubmit} 
+                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm transition-colors duration-200"
+                  >
                     {editingCase ? 'Actualizar' : 'Crear'} Caso
                   </button>
-                  <button type="button" onClick={closeModal} className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition-colors duration-200">
+                  <button 
+                    type="button" 
+                    onClick={closeModal} 
+                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition-colors duration-200"
+                  >
                     Cancelar
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de reautenticación con Google */}
+      {showGoogleAuthModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">⚠️ Necesitamos permisos adicionales</h3>
+            <p className="text-gray-600 mb-6">
+              {uploadError || 'Tu sesión con Google ha expirado. Para continuar subiendo documentos, necesitas volver a autenticarte con Google.'}
+            </p>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowGoogleAuthModal(false)}
+                className="flex-1 px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleGoogleReauth}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center justify-center"
+              >
+                <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
+                  <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Reautenticar
+              </button>
             </div>
           </div>
         </div>
@@ -321,4 +1488,3 @@ const Cases = () => {
 };
 
 export default Cases;
-

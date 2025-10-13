@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import ClientForm from '../components/ClientForm';
+import ClientDetails from '../components/ClientDetails';
 import { 
   PlusIcon, 
   PencilIcon, 
@@ -7,80 +9,149 @@ import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
   UserIcon,
-  GlobeAltIcon,
-  IdentificationIcon,
-  MapPinIcon,
+  EnvelopeIcon,
+  PhoneIcon,
   CalendarIcon,
   ArrowLeftIcon
 } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 
-// Real axios for API calls
-const axios = {
-  get: async (url) => {
-    const response = await fetch(`http://localhost:3001${url}`);
-    return { data: await response.json() };
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+const api = {
+  get: async (endpoint) => {
+    try {
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { data };
+    } catch (error) {
+      console.error(`GET ${endpoint} failed:`, error);
+      throw error;
+    }
   },
-  post: async (url, data) => {
-    const response = await fetch(`http://localhost:3001${url}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    return { data: await response.json() };
+  
+  post: async (endpoint, data) => {
+    try {
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      return { data: result };
+    } catch (error) {
+      console.error(`POST ${endpoint} failed:`, error);
+      throw error;
+    }
   },
-  put: async (url, data) => {
-    const response = await fetch(`http://localhost:3001${url}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    return { data: await response.json() };
+  
+  put: async (endpoint, data) => {
+    try {
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      return { data: result };
+    } catch (error) {
+      console.error(`PUT ${endpoint} failed:`, error);
+      throw error;
+    }
   },
-  delete: async (url) => {
-    const response = await fetch(`http://localhost:3001${url}`, {
-      method: 'DELETE'
-    });
-    return { data: await response.json() };
+  
+  delete: async (endpoint) => {
+    try {
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return { data };
+    } catch (error) {
+      console.error(`DELETE ${endpoint} failed:`, error);
+      throw error;
+    }
   }
 };
 
 const Clients = () => {
+  const [selectedClient, setSelectedClient] = useState(null);
   const navigate = useNavigate();
   const [clients, setClients] = useState([]);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
   const [notification, setNotification] = useState({ show: false, type: '', message: '' });
   const [formData, setFormData] = useState({
-    name: '',
-    country: '',
-    document: '',
-    address: '',
-    entryDate: ''
+    nombre: '',
+    apellido: '',
+    email: '',
+    telefono: '',
+    canal_ingreso: 'Web'
   });
   const [formErrors, setFormErrors] = useState({});
 
-  const documentTypes = [
-    { value: 'INE', label: 'INE (México)' },
-    { value: 'DNI', label: 'DNI (España/Argentina)' },
-    { value: 'CEDULA', label: 'Cédula' },
-    { value: 'PASAPORTE', label: 'Pasaporte' },
-    { value: 'OTRO', label: 'Otro' }
-  ];
+  const canalOptions = ['Web', 'Teléfono', 'Referido', 'Redes Sociales', 'Oficina', 'Otro'];
 
   useEffect(() => {
     fetchClients();
-  }, []);
+  }, [search]);
 
   const fetchClients = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/clients');
-      setClients(response.data);
+  const response = await api.get(`/api/clientes?search=${encodeURIComponent(search)}`);
+      
+      // Adaptarse a la respuesta del backend
+      let clientsData = [];
+      if (response.data && Array.isArray(response.data.clientes)) {
+        clientsData = response.data.clientes;
+      } else if (Array.isArray(response.data)) {
+        clientsData = response.data;
+      }
+      
+      setClients(clientsData);
     } catch (error) {
-      showNotification('error', 'Error al cargar los clientes');
       console.error('Error fetching clients:', error);
+      showNotification('error', 'Error al cargar los clientes: ' + error.message);
+      setClients([]);
     } finally {
       setLoading(false);
     }
@@ -96,24 +167,22 @@ const Clients = () => {
   const validateForm = () => {
     const errors = {};
     
-    if (!formData.name.trim()) {
-      errors.name = 'El nombre es requerido';
+    if (!formData.nombre.trim()) {
+      errors.nombre = 'El nombre es requerido';
     }
     
-    if (!formData.country.trim()) {
-      errors.country = 'El país es requerido';
+    if (!formData.apellido.trim()) {
+      errors.apellido = 'El apellido es requerido';
     }
     
-    if (!formData.document.trim()) {
-      errors.document = 'El documento es requerido';
+    if (!formData.email.trim()) {
+      errors.email = 'El email es requerido';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = 'El email no es válido';
     }
     
-    if (!formData.address.trim()) {
-      errors.address = 'La dirección es requerida';
-    }
-    
-    if (!formData.entryDate) {
-      errors.entryDate = 'La fecha de entrada es requerida';
+    if (formData.telefono && !/^[\d\s\-\+\(\)]+$/.test(formData.telefono)) {
+      errors.telefono = 'El teléfono no es válido';
     }
 
     setFormErrors(errors);
@@ -127,50 +196,52 @@ const Clients = () => {
 
     try {
       const payload = {
-        ...formData,
-        entryDate: new Date(formData.entryDate).toISOString()
+        nombre: formData.nombre.trim(),
+        apellido: formData.apellido.trim(),
+        email: formData.email.trim().toLowerCase(),
+        telefono: formData.telefono.trim() || null,
+        canal_ingreso: formData.canal_ingreso
       };
 
+      let response;
       if (editingClient) {
-        const response = await axios.put(`/api/clients/${editingClient.id}`, payload);
+        response = await api.put(`/api/clientes/${editingClient.cliente_id}`, payload);
         setClients(clients.map(client => 
-          client.id === editingClient.id ? response.data : client
+          client.cliente_id === editingClient.cliente_id ? response.data : client
         ));
         showNotification('success', 'Cliente actualizado exitosamente');
       } else {
-        const response = await axios.post('/api/clients', payload);
-        setClients([...clients, response.data]);
+        response = await api.post('/api/clientes', payload);
+        setClients([response.data, ...clients]);
         showNotification('success', 'Cliente creado exitosamente');
       }
       
       closeModal();
     } catch (error) {
-      showNotification('error', `Error al ${editingClient ? 'actualizar' : 'crear'} el cliente`);
       console.error('Error submitting form:', error);
+      showNotification('error', `Error al ${editingClient ? 'actualizar' : 'crear'} el cliente: ${error.message}`);
     }
   };
 
   const handleEdit = (client) => {
+    console.log('Editing client:', client);
     setEditingClient(client);
-    setFormData({
-      name: client.name || '',
-      country: client.country || '',
-      document: client.document || '',
-      address: client.address || '',
-      entryDate: client.entryDate ? new Date(client.entryDate).toISOString().split('T')[0] : ''
-    });
     setShowModal(true);
   };
 
+  const handleRowClick = (client) => {
+    setSelectedClient(client);
+  };
+
   const handleDelete = async (clientId) => {
-    if (window.confirm('¿Está seguro que desea eliminar este cliente?')) {
+    if (window.confirm('¿Está seguro que desea eliminar este cliente? Esta acción también eliminará todos sus casos asociados.')) {
       try {
-        await axios.delete(`/api/clients/${clientId}`);
-        setClients(clients.filter(client => client.id !== clientId));
+        await api.delete(`/api/clientes/${clientId}`);
+        setClients(clients.filter(client => client.cliente_id !== clientId));
         showNotification('success', 'Cliente eliminado exitosamente');
       } catch (error) {
-        showNotification('error', 'Error al eliminar el cliente');
         console.error('Error deleting client:', error);
+        showNotification('error', 'Error al eliminar el cliente: ' + error.message);
       }
     }
   };
@@ -179,11 +250,11 @@ const Clients = () => {
     setShowModal(false);
     setEditingClient(null);
     setFormData({
-      name: '',
-      country: '',
-      document: '',
-      address: '',
-      entryDate: ''
+      nombre: '',
+      apellido: '',
+      email: '',
+      telefono: '',
+      canal_ingreso: 'Web'
     });
     setFormErrors({});
   };
@@ -199,7 +270,18 @@ const Clients = () => {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('es-ES');
+    try {
+      return new Date(dateString).toLocaleDateString('es-ES');
+    } catch (error) {
+      return 'Fecha inválida';
+    }
+  };
+
+  const getCasosActivos = (client) => {
+    if (client.caso && Array.isArray(client.caso)) {
+      return client.caso.filter(caso => caso.estado !== 'COMPLETADO').length;
+    }
+    return 0;
   };
 
   return (
@@ -245,87 +327,57 @@ const Clients = () => {
           </button>
         </div>
 
+        {/* Buscador */}
+        <div className="mb-4 flex justify-end">
+          <input
+            type="text"
+            className="px-4 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full max-w-xs"
+            placeholder="Buscar por nombre, apellido, correo, tipo de proceso o país..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
         {/* Tabla de Clientes */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
           {loading ? (
             <div className="flex justify-center items-center h-64">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              <span className="ml-4 text-gray-600">Cargando clientes...</span>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Cliente
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      País
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Documento
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Dirección
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Fecha Ingreso
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Acciones
-                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Apellido</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo de proceso</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">País</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teléfono</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Correo</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {clients.map((client) => (
-                    <tr key={client.id} className="hover:bg-gray-50 transition-colors duration-150">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10">
-                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                              <UserIcon className="h-6 w-6 text-blue-600" />
-                            </div>
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{client.name}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <GlobeAltIcon className="h-4 w-4 text-gray-400 mr-2" />
-                          <span className="text-sm text-gray-900">{client.country}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <IdentificationIcon className="h-4 w-4 text-gray-400 mr-2" />
-                          <div className="text-sm text-gray-900">{client.document}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-start">
-                          <MapPinIcon className="h-4 w-4 text-gray-400 mr-2 mt-0.5 flex-shrink-0" />
-                          <span className="text-sm text-gray-900">{client.address}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <CalendarIcon className="h-4 w-4 text-gray-400 mr-2" />
-                          <span className="text-sm text-gray-900">{formatDate(client.entryDate)}</span>
-                        </div>
-                      </td>
+                    <tr key={client.cliente_id} className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer" onClick={() => handleRowClick(client)}>
+                      <td className="px-6 py-4 whitespace-nowrap">{client.nombre || 'Sin nombre'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{client.apellido || 'Sin apellido'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{client.tipo_proceso || client.migratorio_tipo_proceso || 'No especificado'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{client.pais_origen || client.pais_nacimiento || 'No especificado'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{client.telefono || 'No especificado'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{client.email || 'No especificado'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
                           <button
-                            onClick={() => handleEdit(client)}
+                            onClick={(e) => { e.stopPropagation(); handleEdit(client); }}
                             className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors duration-150"
                             title="Editar cliente"
                           >
                             <PencilIcon className="h-4 w-4" />
                           </button>
                           <button
-                            onClick={() => handleDelete(client.id)}
+                            onClick={(e) => { e.stopPropagation(); handleDelete(client.cliente_id); }}
                             className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors duration-150"
                             title="Eliminar cliente"
                           >
@@ -338,7 +390,7 @@ const Clients = () => {
                 </tbody>
               </table>
               
-              {clients.length === 0 && (
+              {clients.length === 0 && !loading && (
                 <div className="text-center py-12">
                   <UserIcon className="mx-auto h-12 w-12 text-gray-400" />
                   <h3 className="mt-2 text-sm font-medium text-gray-900">No hay clientes</h3>
@@ -352,148 +404,47 @@ const Clients = () => {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Modal para crear/editar cliente */}
       {showModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
-            
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <div onSubmit={handleSubmit}>
-                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">
-                      {editingClient ? 'Editar Cliente' : 'Nuevo Cliente'}
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={closeModal}
-                      className="text-gray-400 hover:text-gray-600 transition-colors duration-150"
-                    >
-                      <XMarkIcon className="h-6 w-6" />
-                    </button>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    {/* Nombre */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Nombre Completo *
-                      </label>
-                      <input
-                        type="text"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleInputChange}
-                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          formErrors.name ? 'border-red-300' : 'border-gray-300'
-                        }`}
-                        placeholder="Ingrese el nombre completo"
-                      />
-                      {formErrors.name && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.name}</p>
-                      )}
-                    </div>
+        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center">
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={closeModal}></div>
+          <div className="relative z-10 w-full max-w-3xl mx-auto">
+            <ClientForm
+              initialData={editingClient || {}}
+              mode={editingClient ? 'edit' : 'create'}
+              loading={loading}
+              error={null}
+              onSubmit={async (form) => {
+                setLoading(true);
+                try {
+                  let response;
+                  if (editingClient) {
+                    response = await api.put(`/api/clientes/${editingClient.cliente_id}`, form);
+                    setClients(clients.map(client => client.cliente_id === editingClient.cliente_id ? response.data : client));
+                    showNotification('success', 'Cliente actualizado exitosamente');
+                  } else {
+                    response = await api.post('/api/clientes', form);
+                    setClients([response.data, ...clients]);
+                    showNotification('success', 'Cliente creado exitosamente');
+                  }
+                  closeModal();
+                } catch (error) {
+                  showNotification('error', `Error al ${editingClient ? 'actualizar' : 'crear'} el cliente: ${error.message}`);
+                } finally {
+                  setLoading(false);
+                }
+              }}
+            />
+          </div>
+        </div>
+      )}
 
-                    {/* País */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        País de Origen *
-                      </label>
-                      <input
-                        type="text"
-                        name="country"
-                        value={formData.country}
-                        onChange={handleInputChange}
-                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          formErrors.country ? 'border-red-300' : 'border-gray-300'
-                        }`}
-                        placeholder="Ingrese el país"
-                      />
-                      {formErrors.country && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.country}</p>
-                      )}
-                    </div>
-
-                    {/* Documento */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Documento *
-                      </label>
-                      <input
-                        type="text"
-                        name="document"
-                        value={formData.document}
-                        onChange={handleInputChange}
-                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          formErrors.document ? 'border-red-300' : 'border-gray-300'
-                        }`}
-                        placeholder="Ingrese el documento"
-                      />
-                      {formErrors.document && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.document}</p>
-                      )}
-                    </div>
-
-                    {/* Dirección */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Dirección *
-                      </label>
-                      <textarea
-                        name="address"
-                        value={formData.address}
-                        onChange={handleInputChange}
-                        rows={3}
-                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          formErrors.address ? 'border-red-300' : 'border-gray-300'
-                        }`}
-                        placeholder="Ingrese la dirección completa"
-                      />
-                      {formErrors.address && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.address}</p>
-                      )}
-                    </div>
-
-                    {/* Fecha de Entrada */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Fecha de Entrada *
-                      </label>
-                      <input
-                        type="date"
-                        name="entryDate"
-                        value={formData.entryDate}
-                        onChange={handleInputChange}
-                        className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          formErrors.entryDate ? 'border-red-300' : 'border-gray-300'
-                        }`}
-                      />
-                      {formErrors.entryDate && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.entryDate}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                  <button
-                    type="button"
-                    onClick={handleSubmit}
-                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm transition-colors duration-200"
-                  >
-                    {editingClient ? 'Actualizar' : 'Crear'} Cliente
-                  </button>
-                  <button
-                    type="button"
-                    onClick={closeModal}
-                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition-colors duration-200"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            </div>
+      {/* Modal para detalles de cliente */}
+      {selectedClient && (
+        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center">
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setSelectedClient(null)}></div>
+          <div className="relative z-10 w-full max-w-3xl mx-auto">
+            <ClientDetails client={selectedClient} onClose={() => setSelectedClient(null)} />
           </div>
         </div>
       )}

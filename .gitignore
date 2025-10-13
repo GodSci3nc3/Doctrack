@@ -13,6 +13,7 @@ out/
 .env.development.local
 .env.test.local
 .env.production.local
+.env.*
 
 # Logs
 npm-debug.log*
@@ -106,3 +107,9 @@ dist_electron/
 *.db
 *.sqlite
 *.sqlite3
+
+# Google Cloud credentials and secrets
+server/doctrack-drive-service-account.json
+server/client_secret.json
+server/services/personal_drive_token.json
+server/config/drive-service-account.json

@@ -3,7 +3,7 @@
 <img src = "https://github.com/user-attachments/assets/40c08f1c-bd5b-44bf-a787-63eaa06a4982" style = "height: 600px;">
 
 **Doctrack** es una plataforma todo-en-uno diseñada para optimizar y profesionalizar el trabajo de los preparadores documentales migratorios. Este proyecto es el MVP de una solución integral que permite gestionar, automatizar y realizar un seguimiento eficiente de los casos migratorios y la documentación de los clientes.
-Tecnologías Utilizadas
+## Tecnologías Utilizadas
 
     Frontend: React, TailwindCSS, Vite
 
