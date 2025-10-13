@@ -1,61 +1,255 @@
-# Doctrack - Migratory Case Management Platform
+# Doctrack - Immigration Case Management Platform
 
-<img src = "https://github.com/user-attachments/assets/40c08f1c-bd5b-44bf-a787-63eaa06a4982" style = "height: 600px;">
+<img src="https://github.com/user-attachments/assets/40c08f1c-bd5b-44bf-a787-63eaa06a4982" style="height: 600px;">
 
-**Doctrack** es una plataforma todo-en-uno diseñada para optimizar y profesionalizar el trabajo de los preparadores documentales migratorios. Este proyecto es el MVP de una solución integral que permite gestionar, automatizar y realizar un seguimiento eficiente de los casos migratorios y la documentación de los clientes.
-## Tecnologías Utilizadas
+A comprehensive platform designed to streamline and professionalize the workflow of immigration document preparers. Doctrack provides an integrated solution for managing, automating, and efficiently tracking immigration cases and client documentation.
 
-    Frontend: React, TailwindCSS, Vite
+## Table of Contents
+- [Features](#features)
+- [Technology Stack](#technology-stack)
+- [Architecture](#architecture)
+- [Installation](#installation)
+- [Usage](#usage)
+- [API Documentation](#api-documentation)
+- [Project Structure](#project-structure)
+- [Development](#development)
+- [Deployment](#deployment)
+- [Contributing](#contributing)
+- [License](#license)
 
-    Backend: Node.js, Express, Prisma
+## Features
 
-    Base de Datos: SQLite
+### Core Functionality
+- **Client Management**: Comprehensive client profiles with personal, immigration, and contact details
+- **Case Tracking**: Complete immigration case lifecycle management with status tracking
+- **Document Management**: Secure document upload, storage, and organization using Google Drive integration
+- **Authentication**: Secure JWT-based authentication with Google OAuth support
+- **Dashboard Analytics**: Real-time insights into case progress and client statistics
+- **Automated Workflows**: Streamlined processes for document checklists and case updates
 
-    Autenticación: JWT, bcrypt
+### Security & Integration
+- **Google Drive Integration**: Automated document storage and permissions management
+- **Supabase Storage**: Reliable cloud storage for sensitive documents
+- **Multi-factor Authentication**: Enhanced security with Google OAuth
+- **Role-based Access Control**: Secure access management for different user types
 
-    Estilo Visual: Blanco, gris claro, azul oscuro y verde jade
+## Technology Stack
 
-## Estructura del MVP
+### Frontend
+- **React 18**: Modern UI framework with hooks and functional components
+- **Vite**: Fast build tool and development server
+- **TailwindCSS**: Utility-first CSS framework for responsive design
+- **React Router**: Client-side routing and navigation
 
-El MVP de Doctrack incluye las siguientes funcionalidades clave:
-1. Gestión de Casos Migratorios
+### Backend
+- **Node.js**: JavaScript runtime environment
+- **Express.js**: Web application framework
+- **Prisma ORM**: Modern database toolkit with type safety
+- **PostgreSQL**: Production-ready relational database
 
-    Lista de Casos: Visualización de los casos registrados.
+### Authentication & Storage
+- **JWT**: Secure token-based authentication
+- **bcrypt**: Password hashing and security
+- **Google OAuth 2.0**: Third-party authentication
+- **Google Drive API**: Document storage and management
+- **Supabase**: Backend-as-a-Service platform
 
-    Nuevo Caso: Formulario para agregar un nuevo caso migratorio.
+### Development & Deployment
+- **Electron**: Cross-platform desktop application support
+- **Vercel**: Serverless deployment platform
+- **Docker**: Containerization for development environment
+- **ESLint**: Code quality and consistency
 
-    Seguimiento del Caso: Estado del caso (aprobado, en proceso, etc.).
+## Architecture
 
-    Revisión IA: Funcionalidad para integrar un sistema de revisión de casos utilizando IA (en fases futuras).
+Doctrack follows a modern full-stack architecture:
 
-2. Gestión de Clientes
+```
+Frontend (React + Vite)
+    ↓
+Backend API (Express.js)
+    ↓
+Database Layer (Prisma + PostgreSQL)
+    ↓
+External Services (Google Drive, Supabase)
+```
 
-    Lista de Clientes: Visualización y búsqueda de clientes.
+## Installation
 
-    Nuevo Cliente: Registro de clientes con detalles personales, migratorios y de contacto.
+### Prerequisites
+- Node.js (v18 or higher)
+- npm or yarn
+- PostgreSQL database
+- Google Cloud Platform account (for Drive API)
+- Supabase account
 
-    Contratos: Gestión de contratos firmados con los clientes.
+### Local Development Setup
 
-3. Documentación y Pagos
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/GodSci3nc3/Doctrack.git
+   cd Doctrack
+   ```
 
-    Documentos: Subida y almacenamiento seguro de documentos requeridos para cada caso.
+2. **Install dependencies**
+   ```bash
+   npm install
+   cd client && npm install
+   cd ../server && npm install
+   ```
 
-    Pagos & Reportes: Resumen de pagos y generación de reportes de transacciones y casos.
+3. **Environment Configuration**
+   Create `.env` files in both client and server directories:
+   
+   **Server `.env`:**
+   ```
+   DATABASE_URL="postgresql://username:password@localhost:5432/doctrack"
+   JWT_SECRET="your-jwt-secret"
+   GOOGLE_CLIENT_ID="your-google-client-id"
+   GOOGLE_CLIENT_SECRET="your-google-client-secret"
+   SUPABASE_URL="your-supabase-url"
+   SUPABASE_ANON_KEY="your-supabase-key"
+   ```
 
-## Características del MVP
+4. **Database Setup**
+   ```bash
+   cd server
+   npx prisma migrate dev
+   npx prisma generate
+   ```
 
-El MVP está enfocado en tres áreas clave del flujo de trabajo migratorio:
+5. **Start Development Servers**
+   ```bash
+   npm run dev
+   ```
 
-    Casos Migratorios: Permite a los preparadores documentales gestionar y realizar un seguimiento de los casos migratorios. Los usuarios pueden agregar, editar y visualizar los casos según el tipo de visa, estado del proceso y documentos asociados.
+## Usage
 
-    Clientes: Facilita la creación y gestión de perfiles de clientes, donde se almacenan los detalles personales y migratorios. Los preparadores pueden acceder a la información completa de cada cliente para gestionar sus casos de forma eficiente.
+### Getting Started
+1. Access the application at `http://localhost:5173`
+2. Register a new account or login with Google
+3. Create client profiles with immigration details
+4. Manage cases with document checklists
+5. Track progress through the dashboard
 
-    Documentos y Pagos: La plataforma permite subir documentos y gestionarlos de manera segura. Además, los preparadores pueden hacer un seguimiento de los pagos realizados y generar reportes de los mismos.
+### Key Workflows
 
-## Flujo de Trabajo del MVP
+**Client Onboarding:**
+1. Create new client profile
+2. Upload required documents
+3. Set up Google Drive permissions
+4. Initialize case tracking
 
-    Recepción del Cliente: El proceso comienza con la recepción del cliente y la creación del perfil con toda su documentación.
+**Case Management:**
+1. Create immigration case
+2. Define document requirements
+3. Track submission deadlines
+4. Monitor case status updates
 
-    Gestión de Casos: Una vez el cliente es registrado, se le asigna un caso migratorio, que se gestiona a lo largo de las etapas del proceso migratorio.
+## API Documentation
 
-    Documentos y Revisión: Los preparadores suben los documentos y realizan un seguimiento del caso hasta su resolución, ya sea aprobado, rechazado o pendiente.
+### Authentication Endpoints
+- `POST /api/auth/login` - User authentication
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/google` - Google OAuth authentication
+- `POST /api/auth/logout` - User logout
+
+### Client Management
+- `GET /api/clients` - Retrieve all clients
+- `POST /api/clients` - Create new client
+- `GET /api/clients/:id` - Get specific client
+- `PUT /api/clients/:id` - Update client information
+- `DELETE /api/clients/:id` - Remove client
+
+### Case Management
+- `GET /api/cases` - Retrieve all cases
+- `POST /api/cases` - Create new case
+- `GET /api/cases/:id` - Get specific case
+- `PUT /api/cases/:id` - Update case status
+
+### Document Management
+- `POST /api/documents/upload` - Upload documents
+- `GET /api/documents/:caseId` - Retrieve case documents
+- `DELETE /api/documents/:id` - Remove document
+
+## Project Structure
+
+```
+Doctrack/
+├── client/                 # Frontend React application
+│   ├── src/
+│   │   ├── components/     # Reusable UI components
+│   │   ├── pages/         # Application pages
+│   │   ├── services/      # API communication
+│   │   └── utils/         # Helper functions
+│   └── public/            # Static assets
+├── server/                # Backend API server
+│   ├── controllers/       # Request handlers
+│   ├── middleware/        # Authentication & validation
+│   ├── prisma/           # Database schema & migrations
+│   ├── routes/           # API route definitions
+│   └── services/         # Business logic
+├── assets/               # Application resources
+└── docs/                # Documentation files
+```
+
+## Development
+
+### Code Standards
+- ESLint configuration for code quality
+- Prettier for consistent formatting
+- Conventional commits for version control
+- Type checking with PropTypes
+
+### Testing
+- Unit tests with Jest
+- Integration tests for API endpoints
+- End-to-end testing with Cypress
+
+### Database Management
+```bash
+# Run migrations
+npx prisma migrate dev
+
+# Reset database
+npx prisma migrate reset
+
+# View database
+npx prisma studio
+```
+
+## Deployment
+
+### Production Build
+```bash
+npm run build
+```
+
+### Vercel Deployment
+1. Connect repository to Vercel
+2. Configure environment variables
+3. Deploy with automatic CI/CD
+
+### Desktop Application
+```bash
+npm run build
+npm run dist
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+**Developed by Arturo Rosales V** - [GitHub](https://github.com/GodSci3nc3) | [Email](mailto:rosalesvelazquezarturo@email.com)
+
+For questions, issues, or collaboration opportunities, please reach out through GitHub or email.
