@@ -1,21 +1,12 @@
 import { PrismaClient } from '@prisma/client';
 
-// Configuración optimizada para producción con pool de conexiones
+// Configuración optimizada para producción
 const prisma = new PrismaClient({
   log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
-  datasources: {
-    db: {
-      url: process.env.DATABASE_URL,
-    },
-  },
-  // Configuración del pool de conexiones para mejor rendimiento
-  connectionPool: {
-    maxOpenConnections: 10,
-    maxIdleTime: 30000, // 30 segundos
-  },
-  // Optimizaciones adicionales
+  // Optimizaciones para transacciones
   transactionOptions: {
     timeout: 10000, // 10 segundos timeout
+    maxWait: 5000,  // Máximo tiempo de espera para obtener una conexión
   },
 });
 
