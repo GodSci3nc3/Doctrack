@@ -20,16 +20,40 @@ const useDashboardData = () => {
     try {
       setIsLoading(true);
       
-      // Usar el nuevo endpoint optimizado que combina todas las queries
-      const response = await fetch(`${API_URL}/api/dashboard/complete`, { 
-        credentials: 'include' 
+      console.log('Loading dashboard data...');
+      
+      // Volver al método original temporalmente para evitar errores
+      const [statsRes, clientesRes, casosRes, checklistRes] = await Promise.all([
+        fetch(`${API_URL}/api/dashboard/stats`, { credentials: 'include' }),
+        fetch(`${API_URL}/api/dashboard/clientes-resumen`, { credentials: 'include' }),
+        fetch(`${API_URL}/api/dashboard/casos-resumen`, { credentials: 'include' }),
+        fetch(`${API_URL}/api/dashboard/checklist-pendientes`, { credentials: 'include' })
+      ]);
+
+      console.log('API responses:', {
+        stats: statsRes.status,
+        clientes: clientesRes.status,
+        casos: casosRes.status,
+        checklist: checklistRes.status
       });
 
-      if (response.ok) {
-        const dashboardData = await response.json();
-        setDashboardData(dashboardData);
+      if (statsRes.ok) {
+        const stats = await statsRes.json();
+        const clientes = clientesRes.ok ? await clientesRes.json() : [];
+        const casos = casosRes.ok ? await casosRes.json() : [];
+        const checklist = checklistRes.ok ? await checklistRes.json() : [];
+
+        const combinedData = {
+          ...stats,
+          clientesRecientes: clientes,
+          casosRecientes: casos,
+          checklistPendientes: checklist
+        };
+
+        console.log('Dashboard data loaded:', combinedData);
+        setDashboardData(combinedData);
       } else {
-        console.error('Error loading dashboard data');
+        console.error('Stats API failed:', statsRes.status, statsRes.statusText);
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -328,6 +352,23 @@ const Dashboard = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Cargando datos del dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Protección adicional para evitar pantalla blanca
+  if (!dashboardData) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <div className="text-center">
+          <p className="text-gray-600">No se pudieron cargar los datos del dashboard</p>
+          <button 
+            onClick={loadDashboardData}
+            className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+          >
+            Reintentar
+          </button>
         </div>
       </div>
     );
