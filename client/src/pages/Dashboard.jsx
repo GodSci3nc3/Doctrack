@@ -19,25 +19,17 @@ const useDashboardData = () => {
   const loadDashboardData = async () => {
     try {
       setIsLoading(true);
-      const [statsRes, clientesRes, casosRes, checklistRes] = await Promise.all([
-        fetch(`${API_URL}/api/dashboard/stats`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/dashboard/clientes-resumen`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/dashboard/casos-resumen`, { credentials: 'include' }),
-        fetch(`${API_URL}/api/dashboard/checklist-pendientes`, { credentials: 'include' })
-      ]);
+      
+      // Usar el nuevo endpoint optimizado que combina todas las queries
+      const response = await fetch(`${API_URL}/api/dashboard/complete`, { 
+        credentials: 'include' 
+      });
 
-      if (statsRes.ok) {
-        const stats = await statsRes.json();
-        const clientes = clientesRes.ok ? await clientesRes.json() : [];
-        const casos = casosRes.ok ? await casosRes.json() : [];
-        const checklist = checklistRes.ok ? await checklistRes.json() : [];
-
-        setDashboardData({
-          ...stats,
-          clientesRecientes: clientes,
-          casosRecientes: casos,
-          checklistPendientes: checklist
-        });
+      if (response.ok) {
+        const dashboardData = await response.json();
+        setDashboardData(dashboardData);
+      } else {
+        console.error('Error loading dashboard data');
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);

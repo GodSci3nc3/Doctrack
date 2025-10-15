@@ -1,5 +1,132 @@
 import { prisma } from '../config/database.js';
 
+// Endpoint optimizado que combina todas las queries del dashboard
+export const getDashboardComplete = async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    
+    // Single query optimizada con todas las agregaciones necesarias
+    const [stats, clientesRecientes, casosRecientes, checklistPendientes] = await Promise.all([
+      // Stats principales
+      prisma.$transaction(async (tx) => {
+        const [totalClientes, totalCasos, casosActivos, documentosTotales, casosCompletados, documentosPendientes] = await Promise.all([
+          tx.cliente.count({ where: { created_by: userId } }),
+          tx.caso.count({
+            where: {
+              cliente: { created_by: userId }
+            }
+          }),
+          tx.caso.count({ 
+            where: { 
+              estado: { in: ['PENDIENTE', 'EN_PROCESO'] },
+              cliente: { created_by: userId }
+            } 
+          }),
+          tx.documento.count({
+            where: {
+              caso: {
+                cliente: { created_by: userId }
+              }
+            }
+          }),
+          tx.caso.count({ 
+            where: { 
+              estado: 'APROBADO',
+              cliente: { created_by: userId }
+            } 
+          }),
+          tx.documento.count({
+            where: { 
+              fecha_recibido: null,
+              caso: {
+                cliente: { created_by: userId }
+              }
+            }
+          })
+        ]);
+
+        return {
+          totalClientes,
+          totalCasos,
+          casosActivos,
+          casosCompletados,
+          documentosTotales,
+          documentosPendientes
+        };
+      }),
+
+      // Clientes recientes
+      prisma.cliente.findMany({
+        where: { created_by: userId },
+        orderBy: { created_at: 'desc' },
+        take: 5,
+        select: {
+          cliente_id: true,
+          nombre: true,
+          apellido: true,
+          tipo_proceso: true,
+          created_at: true
+        }
+      }),
+
+      // Casos recientes
+      prisma.caso.findMany({
+        where: {
+          cliente: { created_by: userId }
+        },
+        orderBy: { created_at: 'desc' },
+        take: 5,
+        include: {
+          cliente: {
+            select: {
+              nombre: true,
+              apellido: true
+            }
+          }
+        }
+      }),
+
+      // Checklist pendientes
+      prisma.documento.findMany({
+        where: {
+          fecha_recibido: null,
+          caso: {
+            cliente: { created_by: userId }
+          }
+        },
+        orderBy: { created_at: 'desc' },
+        take: 10,
+        include: {
+          caso: {
+            include: {
+              cliente: {
+                select: {
+                  nombre: true,
+                  apellido: true
+                }
+              }
+            }
+          }
+        }
+      })
+    ]);
+
+    // Combinar todo en una respuesta
+    const dashboardData = {
+      ...stats,
+      clientesRecientes,
+      casosRecientes,
+      checklistPendientes
+    };
+
+    return res.json(dashboardData);
+    
+  } catch (err) {
+    console.error('Error getting complete dashboard data:', err);
+    return res.status(500).json({ message: 'Error obteniendo datos del dashboard' });
+  }
+};
+
 export const getDashboardStats = async (req, res) => {
   try {
     console.log('Getting dashboard stats for user:', req.user.sub);

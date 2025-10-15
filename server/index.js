@@ -47,12 +47,14 @@ const supabaseUpload = multer({
 // === GENERAL CONFIG ===
 app.use(cookieParser());
 
-// Log all requests
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  console.log('Headers:', req.headers);
-  next();
-});
+// Log requests only in development
+if (process.env.NODE_ENV !== 'production') {
+  app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    console.log('Headers:', req.headers);
+    next();
+  });
+}
 
 // Configuración CORS unificada
 const isProduction = process.env.NODE_ENV === 'production';
@@ -80,18 +82,20 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Eliminar configuraciones redundantes y cabeceras manuales para evitar conflictos
 
-// Debug middleware
-app.use(function(req, res, next) {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url} - Origin: ${req.headers.origin}`);
-  next();
-});
+// Debug middleware (solo en desarrollo)
+if (process.env.NODE_ENV !== 'production') {
+  app.use(function(req, res, next) {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url} - Origin: ${req.headers.origin}`);
+    next();
+  });
 
-// Middleware para registrar todas las solicitudes
-app.use((req, res, next) => {
-  console.log(`Solicitud recibida: ${req.method} ${req.url}`);
-  console.log('Cabeceras:', req.headers);
-  next();
-});
+  // Middleware para registrar todas las solicitudes en desarrollo
+  app.use((req, res, next) => {
+    console.log(`Solicitud recibida: ${req.method} ${req.url}`);
+    console.log('Cabeceras:', req.headers);
+    next();
+  });
+}
 
 // === ROUTES ===
 
@@ -114,6 +118,7 @@ app.post('/auth/logout', authController.logout);
 app.get('/api/auth/profile', authRequired, authController.getProfile);
 
 // === DASHBOARD ROUTES ===
+app.get('/api/dashboard/complete', authRequired, dashboardController.getDashboardComplete);
 app.get('/api/dashboard/stats', authRequired, dashboardController.getDashboardStats);
 app.get('/api/dashboard/clientes-resumen', authRequired, dashboardController.getClientsResume);
 app.get('/api/dashboard/casos-resumen', authRequired, dashboardController.getCasesResume);

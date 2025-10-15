@@ -19,7 +19,7 @@ const useAuth = () => {
           setCurrentUser(JSON.parse(cachedUser));
         }
 
-        // Verificar la autenticación con el servidor
+        // Verificar la autenticación con el servidor UNA SOLA VEZ
         const response = await fetch(`${API_URL}/api/auth/profile`, {
           credentials: 'include'  // Importante para enviar las cookies
         });
@@ -34,35 +34,10 @@ const useAuth = () => {
           sessionStorage.removeItem('user');
         }
 
-        // Verificar el token con el servidor
-        try {
-          const response = await fetch(`${API_URL}/api/auth/profile`, {
-            credentials: 'include'
-          });
-
-          if (response.ok) {
-            const { user } = await response.json();
-            setCurrentUser(user);
-            localStorage.setItem('user', JSON.stringify(user));
-          } else {
-            // Token inválido
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('user');
-            setCurrentUser(null);
-          }
-        } catch (error) {
-          console.error('Error verifying token:', error);
-          // En caso de error de verificación, limpiar el estado
-          localStorage.removeItem('authToken');
-          localStorage.removeItem('user');
-          setCurrentUser(null);
-        }
-
       } catch (error) {
         console.error('Error loading user data:', error);
         // En caso de error general, limpiar el estado
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('user');
+        sessionStorage.removeItem('user');
         setCurrentUser(null);
       } finally {
         setIsLoading(false);

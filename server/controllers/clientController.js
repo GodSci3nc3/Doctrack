@@ -3,10 +3,6 @@ import { prisma } from '../config/database.js';
 // Obtener lista de clientes
 export const getClients = async (req, res) => {
   try {
-    console.log('=== GET CLIENTS REQUEST ===');
-    console.log('User ID:', req.user.sub);
-    console.log('Search query:', req.query.search);
-
     const userId = req.user.sub;
     const search = req.query.search || '';
     
@@ -38,13 +34,10 @@ export const getClients = async (req, res) => {
       }
     });
 
-    console.log(`Found ${clientes.length} clients for user ${userId}`);
     return res.json(clientes);
     
   } catch (err) {
-    console.error('=== ERROR GETTING CLIENTS ===');
-    console.error('Error details:', err);
-    console.error('Stack trace:', err.stack);
+    console.error('Error getting clients:', err.message);
     return res.status(500).json({ message: 'Error obteniendo clientes' });
   }
 };
