@@ -20,13 +20,13 @@ export function setAuthCookies(res, { accessToken, refreshToken }) {
   const host = res.req.get('host') || '';
   const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1');
   const isProduction = process.env.NODE_ENV === 'production' && !isLocalhost;
+  
   const cookieOptions = {
     httpOnly: true,
     secure: isProduction,
-    sameSite: isLocalhost ? 'lax' : 'none',
+    sameSite: isProduction ? 'none' : 'lax',
     path: '/',
-    // Do not set domain for localhost, in production you can configure COOKIE_DOMAIN
-    ...(isLocalhost ? {} : { domain: process.env.COOKIE_DOMAIN })
+    // NO configurar domain para permitir cookies cross-origin en Safari
   };
   
   // Configurar las cookies
@@ -44,8 +44,17 @@ export function setAuthCookies(res, { accessToken, refreshToken }) {
 }
 
 export function clearAuthCookies(res) {
-  res.clearCookie('doctrack_access', { path: '/', sameSite: 'none', secure: true });
-  res.clearCookie('doctrack_refresh', { path: '/', sameSite: 'none', secure: true });
+  const isProduction = process.env.NODE_ENV === 'production';
+  res.clearCookie('doctrack_access', { 
+    path: '/', 
+    sameSite: isProduction ? 'none' : 'lax', 
+    secure: isProduction 
+  });
+  res.clearCookie('doctrack_refresh', { 
+    path: '/', 
+    sameSite: isProduction ? 'none' : 'lax', 
+    secure: isProduction 
+  });
 }
 
 export function authRequired(req, res, next) {
