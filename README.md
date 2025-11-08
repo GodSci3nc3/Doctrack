@@ -1,7 +1,7 @@
 # Doctrack - Immigration Case Management Platform
 
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/40c08f1c-bd5b-44bf-a787-63eaa06a4982" alt="Doctrack Platform" style="height: 600px;">
+  <img src="https://github.com/user-attachments/assets/126e9fea-d876-406d-bc6c-2c5fcf6f3236" style="height: 300px;">
   
   <p align="center">
     <strong>A comprehensive platform designed to streamline and professionalize the workflow of immigration document preparers.</strong>
